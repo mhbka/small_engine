@@ -1,6 +1,6 @@
 use crate::{
     gpu::{bind_group::GpuBindGroup},
-    render::renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId, Renderer},
+    render::renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId},
 };
 use std::ops::Range;
 

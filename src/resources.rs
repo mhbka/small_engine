@@ -6,7 +6,6 @@ use crate::{
     },
 };
 use std::io::{BufReader, Cursor};
-use wgpu::{BindGroupLayout, Device, Queue, util::DeviceExt};
 
 #[cfg(target_arch = "wasm32")]
 fn format_url(file_name: &str) -> reqwest::Url {

@@ -2,9 +2,8 @@ use bytemuck::NoUninit;
 use cgmath::{Deg, Matrix4, Point3, SquareMatrix, Vector3, perspective};
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferUsages, Device,
-    ShaderStages, SurfaceConfiguration, TextureFormat,
-    util::{BufferInitDescriptor, DeviceExt},
+    BindGroupLayoutEntry, BindingType, BufferBindingType,
+    ShaderStages, SurfaceConfiguration,
 };
 use winit::keyboard::KeyCode;
 

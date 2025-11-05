@@ -1,5 +1,4 @@
 use crate::gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer};
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
 pub struct Lighting {
     uniform: LightUniform,

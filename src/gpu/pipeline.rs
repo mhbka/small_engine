@@ -1,4 +1,4 @@
-use crate::gpu::{GpuContext, texture::GpuTexture};
+use crate::gpu::GpuContext;
 
 /// Abstraction of the render pipeline.
 #[derive(Clone, Debug)]

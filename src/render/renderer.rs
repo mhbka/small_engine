@@ -2,12 +2,11 @@ use crate::{
     constants::{GLOBAL_BIND_GROUP_SLOT, LIGHTING_BIND_GROUP_SLOT, OBJECT_BIND_GROUP_SLOT},
     gpu::{GpuContext, bind_group::GpuBindGroup, pipeline::GpuPipeline, texture::GpuTexture},
     render::{
-        self,
         commands::{BasicRenderCommand, DrawCommand, RawRenderCommand, RenderCommand},
         scene::Scene,
     },
 };
-use slotmap::{DefaultKey, SlotMap, new_key_type};
+use slotmap::{SlotMap, new_key_type};
 use thiserror::Error;
 
 new_key_type! {

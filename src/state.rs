@@ -1,30 +1,18 @@
-use cgmath::{Rotation3, Vector3};
+use cgmath::Rotation3;
 use image::GenericImageView;
 use std::sync::Arc;
 use web_time::Instant;
 use wgpu::Backends;
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Buffer, BufferBindingType,
-    BufferUsages, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor, CompareFunction,
-    DepthBiasState, DepthStencilState, Device, DeviceDescriptor, ExperimentalFeatures, Extent3d,
-    Face, Features, FragmentState, FrontFace, IndexFormat, Instance, InstanceDescriptor, Limits,
-    LoadOp, MultisampleState, Operations, Origin3d, PipelineCompilationOptions,
-    PipelineLayoutDescriptor, PowerPreference, PrimitiveState, PrimitiveTopology, Queue,
-    RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor,
-    RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType,
-    ShaderStages, StencilState, StoreOp, Surface, SurfaceConfiguration, SurfaceError,
-    TexelCopyBufferLayout, TexelCopyTextureInfo, TexelCopyTextureInfoBase, TextureDimension,
-    TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension,
-    Trace, VertexState,
-    util::{BufferInitDescriptor, DeviceExt},
-    wgt::TextureDescriptor,
+    BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingType, CompareFunction,
+    DepthBiasState, DepthStencilState, DeviceDescriptor, ExperimentalFeatures, Features, Instance, InstanceDescriptor, Limits, PowerPreference, RequestAdapterOptions, SamplerBindingType,
+    ShaderStages, StencilState, SurfaceConfiguration, SurfaceError, TextureSampleType, TextureUsages, TextureViewDimension,
+    Trace,
 };
 use winit::{
-    application::ApplicationHandler,
-    event::*,
-    event_loop::{ActiveEventLoop, EventLoop},
-    keyboard::{KeyCode, PhysicalKey},
+    event_loop::ActiveEventLoop,
+    keyboard::KeyCode,
     window::Window,
 };
 
@@ -32,14 +20,13 @@ use winit::{
 use wasm_bindgen::prelude::*;
 
 use crate::camera::create_camera_bind_group;
-use crate::camera::{Camera, CameraController, CameraUniform};
+use crate::camera::Camera;
 use crate::gpu::GpuContext;
-use crate::gpu::bind_group::GpuBindGroup;
 use crate::gpu::pipeline::GpuPipeline;
 use crate::gpu::texture::GpuTexture;
 use crate::lighting::{Lighting, create_lighting_bind_group};
 use crate::render::model::instances::RawInstance;
-use crate::render::model::{Model, ModelVertex};
+use crate::render::model::ModelVertex;
 use crate::render::renderer::Renderer;
 use crate::render::scene::Scene;
 use crate::resources;

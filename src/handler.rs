@@ -3,8 +3,7 @@ use crate::state::State;
 use std::sync::Arc;
 use wgpu::SurfaceError;
 use winit::event::{KeyEvent, WindowEvent};
-use winit::event_loop::EventLoop;
-use winit::keyboard::{KeyCode, PhysicalKey};
+use winit::keyboard::PhysicalKey;
 use winit::{application::ApplicationHandler, event_loop::ActiveEventLoop, window::Window};
 
 impl ApplicationHandler<State<'static>> for App<'static> {

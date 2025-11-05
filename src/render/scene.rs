@@ -3,7 +3,7 @@ use crate::{
     gpu::GpuContext,
     lighting::Lighting,
     render::{
-        commands::{BasicRenderCommand, DrawCommand, RenderCommand, VertexBufferCommand},
+        commands::RenderCommand,
         model::Model,
         renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId},
     },
