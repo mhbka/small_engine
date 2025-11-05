@@ -1,4 +1,4 @@
-pub mod renderer;
-pub mod model;
 pub mod commands;
+pub mod model;
+pub mod renderer;
 pub mod scene;

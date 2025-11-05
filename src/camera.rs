@@ -1,6 +1,11 @@
 use bytemuck::NoUninit;
 use cgmath::{Deg, Matrix4, Point3, SquareMatrix, Vector3, perspective};
-use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferUsages, Device, ShaderStages, SurfaceConfiguration, TextureFormat, util::{BufferInitDescriptor, DeviceExt}};
+use wgpu::{
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferUsages, Device,
+    ShaderStages, SurfaceConfiguration, TextureFormat,
+    util::{BufferInitDescriptor, DeviceExt},
+};
 use winit::keyboard::KeyCode;
 
 use crate::gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer};
@@ -30,18 +35,19 @@ impl Camera {
             config.width as f32 / config.height as f32,
             45.0,
             0.1,
-            100.0
+            100.0,
         );
         let mut uniform = CameraUniform::new();
         uniform.update_view_proj(&data);
-        let buffer = GpuBuffer::create_uniform("camera_buffer", gpu, bytemuck::cast_slice(&[uniform]));
+        let buffer =
+            GpuBuffer::create_uniform("camera_buffer", gpu, bytemuck::cast_slice(&[uniform]));
         let controller = CameraController::new(0.2);
 
         Self {
             data,
             uniform,
             controller,
-            buffer
+            buffer,
         }
     }
 
@@ -52,54 +58,64 @@ impl Camera {
     }
 
     pub fn update_uniform_buffer(&self, gpu: &GpuContext) {
-        gpu.queue().write_buffer(self.buffer().handle(), 0, bytemuck::cast_slice(&[*self.uniform()]));
+        gpu.queue().write_buffer(
+            self.buffer().handle(),
+            0,
+            bytemuck::cast_slice(&[*self.uniform()]),
+        );
     }
 
     pub fn handle_key(&mut self, code: KeyCode, is_pressed: bool) -> bool {
         self.controller.handle_key(code, is_pressed)
     }
 
-    pub fn data(&self) -> &CameraData { &self.data }
+    pub fn data(&self) -> &CameraData {
+        &self.data
+    }
 
-    pub fn uniform(&self) -> &CameraUniform { &self.uniform }
+    pub fn uniform(&self) -> &CameraUniform {
+        &self.uniform
+    }
 
-    pub fn controller(&self) -> &CameraController { &self.controller }
+    pub fn controller(&self) -> &CameraController {
+        &self.controller
+    }
 
-    pub fn buffer(&self) -> &GpuBuffer { &self.buffer }
+    pub fn buffer(&self) -> &GpuBuffer {
+        &self.buffer
+    }
 }
 
 /// Just contains the camera's bind group and its layout.
 pub struct CameraBindGroup {
     bind_group: BindGroup,
-    layout: BindGroupLayout
+    layout: BindGroupLayout,
 }
 
 /// Create the bind group for the camera.
 pub fn create_camera_bind_group(gpu: &GpuContext, camera_buffer: &GpuBuffer) -> GpuBindGroup {
-    let layout = gpu.device().create_bind_group_layout(&BindGroupLayoutDescriptor { 
-        label: Some("camera_bind_group_layout"), 
-        entries: &[
-            BindGroupLayoutEntry {
+    let layout = gpu
+        .device()
+        .create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("camera_bind_group_layout"),
+            entries: &[BindGroupLayoutEntry {
                 binding: 0,
                 visibility: ShaderStages::VERTEX,
-                ty: BindingType::Buffer { 
-                    ty: BufferBindingType::Uniform, 
-                    has_dynamic_offset: false, 
-                    min_binding_size: None 
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
                 },
-                count: None
-            }
-        ] 
-    });
-    let group = gpu.device().create_bind_group(&BindGroupDescriptor { 
-        label: Some("camera_bind_group"), 
+                count: None,
+            }],
+        });
+    let group = gpu.device().create_bind_group(&BindGroupDescriptor {
+        label: Some("camera_bind_group"),
         layout: &layout,
-        entries: &[
-            BindGroupEntry {
-                binding: 0,
-                resource: camera_buffer.handle().as_entire_binding()
-            }
-        ] 
+        entries: &[BindGroupEntry {
+            binding: 0,
+            resource: camera_buffer.handle().as_entire_binding(),
+        }],
     });
 
     GpuBindGroup::new(group, layout)
@@ -113,7 +129,7 @@ pub struct CameraData {
     aspect: f32,
     fovy: f32,
     znear: f32,
-    zfar: f32
+    zfar: f32,
 }
 
 impl CameraData {
@@ -124,7 +140,7 @@ impl CameraData {
         aspect: f32,
         fovy: f32,
         znear: f32,
-        zfar: f32  
+        zfar: f32,
     ) -> Self {
         Self {
             eye,
@@ -133,7 +149,7 @@ impl CameraData {
             aspect,
             fovy,
             znear,
-            zfar
+            zfar,
         }
     }
 
@@ -227,8 +243,8 @@ impl CameraController {
         let forward_mag = forward.magnitude();
 
         if self.is_right_pressed {
-            // Rescale the distance between the target and the eye so 
-            // that it doesn't change. The eye, therefore, still 
+            // Rescale the distance between the target and the eye so
+            // that it doesn't change. The eye, therefore, still
             // lies on the circle made by the target and eye.
             camera.eye = camera.target - (forward + right * self.speed).normalize() * forward_mag;
         }
@@ -237,4 +253,3 @@ impl CameraController {
         }
     }
 }
- 

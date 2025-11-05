@@ -1,11 +1,11 @@
+use crate::app::App;
+use crate::state::State;
 use std::sync::Arc;
 use wgpu::SurfaceError;
 use winit::event::{KeyEvent, WindowEvent};
 use winit::event_loop::EventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::{application::ApplicationHandler, event_loop::ActiveEventLoop, window::Window};
-use crate::app::App;
-use crate::state::State;
 
 impl ApplicationHandler<State<'static>> for App<'static> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
@@ -15,9 +15,9 @@ impl ApplicationHandler<State<'static>> for App<'static> {
         #[cfg(target_arch = "wasm32")]
         {
             use wasm_bindgen::JsCast;
-            use winit::platform::web::WindowAttributesExtWebSys;
             use wasm_bindgen::UnwrapThrowExt;
-            
+            use winit::platform::web::WindowAttributesExtWebSys;
+
             const CANVAS_ID: &str = "canvas";
 
             let window = wgpu::web_sys::window().unwrap_throw();
@@ -40,13 +40,15 @@ impl ApplicationHandler<State<'static>> for App<'static> {
             // proxy to send the results to the event loop
             if let Some(proxy) = self.proxy.take() {
                 wasm_bindgen_futures::spawn_local(async move {
-                    assert!(proxy
-                        .send_event(
-                            State::new(window)
-                                .await
-                                .expect("Unable to create canvas!!!")
-                        )
-                        .is_ok())
+                    assert!(
+                        proxy
+                            .send_event(
+                                State::new(window)
+                                    .await
+                                    .expect("Unable to create canvas!!!")
+                            )
+                            .is_ok()
+                    )
                 });
             }
         }
@@ -83,22 +85,23 @@ impl ApplicationHandler<State<'static>> for App<'static> {
             WindowEvent::RedrawRequested => {
                 state.update();
                 match state.render() {
-                    Ok(_) => {},
+                    Ok(_) => {}
                     Err(SurfaceError::Lost | SurfaceError::Outdated) => {
                         let size = state.window.inner_size();
                         state.resize(size.width, size.height);
-                    },
+                    }
                     Err(err) => {
                         log::error!("Unable to render: {err}");
                     }
                 }
             }
             WindowEvent::KeyboardInput {
-                event: KeyEvent {
-                    physical_key: PhysicalKey::Code(code),
-                    state: key_state,
-                    ..
-                },
+                event:
+                    KeyEvent {
+                        physical_key: PhysicalKey::Code(code),
+                        state: key_state,
+                        ..
+                    },
                 ..
             } => state.handle_key(event_loop, code, key_state.is_pressed()),
             _ => {}

@@ -3,20 +3,20 @@ use crate::gpu::{GpuContext, texture::GpuTexture};
 /// Abstraction of the render pipeline.
 #[derive(Clone, Debug)]
 pub struct GpuPipeline {
-    pipeline: wgpu::RenderPipeline
+    pipeline: wgpu::RenderPipeline,
 }
 
 impl GpuPipeline {
     /// Creates a render pipeline with mostly default configs.
     pub fn create_default(
-        label: &str, 
+        label: &str,
         gpu: &GpuContext,
         surface_config: &wgpu::SurfaceConfiguration,
         bind_group_layouts: &[&wgpu::BindGroupLayout],
         vertex_buffer_layouts: &[wgpu::VertexBufferLayout],
         vertex_shader: &wgpu::ShaderModule,
         fragment_shader: &wgpu::ShaderModule,
-        depth_stencil: Option<wgpu::DepthStencilState>
+        depth_stencil: Option<wgpu::DepthStencilState>,
     ) -> Self {
         let device = gpu.device();
 
@@ -32,7 +32,7 @@ impl GpuPipeline {
                 module: vertex_shader,
                 entry_point: None, // if we have >1 vertex shader, I think we must specify this?
                 buffers: vertex_buffer_layouts,
-                compilation_options: wgpu::PipelineCompilationOptions::default()
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -49,9 +49,9 @@ impl GpuPipeline {
                 targets: &[Some(wgpu::ColorTargetState {
                     format: surface_config.format,
                     blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL
+                    write_mask: wgpu::ColorWrites::ALL,
                 })],
-                compilation_options: wgpu::PipelineCompilationOptions::default()
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
             }),
             depth_stencil,
             multisample: wgpu::MultisampleState {
@@ -60,14 +60,14 @@ impl GpuPipeline {
                 alpha_to_coverage_enabled: false,
             },
             multiview: None,
-            cache: None
+            cache: None,
         });
 
-        Self {
-            pipeline
-        }
+        Self { pipeline }
     }
 
     /// Get the actual pipeline.
-    pub fn handle(&self) -> &wgpu::RenderPipeline { &self.pipeline }
+    pub fn handle(&self) -> &wgpu::RenderPipeline {
+        &self.pipeline
+    }
 }

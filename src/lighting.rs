@@ -1,38 +1,34 @@
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use crate::gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer};
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
 pub struct Lighting {
     uniform: LightUniform,
-    buffer: GpuBuffer
+    buffer: GpuBuffer,
 }
 
 impl Lighting {
     /// Create a lighting, including initializing the uniform buffer for it.
-    pub fn create(
-        gpu: &GpuContext, 
-        label: &str,
-        position: [f32; 3], 
-        color: [f32; 3]
-    ) -> Self {
+    pub fn create(gpu: &GpuContext, label: &str, position: [f32; 3], color: [f32; 3]) -> Self {
         let uniform = LightUniform::new(position, color);
         let buffer = GpuBuffer::create_uniform(label, gpu, bytemuck::cast_slice(&[uniform]));
-        Self {
-            uniform,
-            buffer
-        }
+        Self { uniform, buffer }
     }
 
     /// Update this lighting's uniform through a callback.
     pub fn update<F>(&mut self, mut update: F)
-    where 
-        F: FnMut(&mut LightUniform) 
+    where
+        F: FnMut(&mut LightUniform),
     {
         update(&mut self.uniform);
     }
 
-    pub fn uniform(&mut self) -> &mut LightUniform { &mut self.uniform }
+    pub fn uniform(&mut self) -> &mut LightUniform {
+        &mut self.uniform
+    }
 
-    pub fn buffer(&self) -> &GpuBuffer { &self.buffer }
+    pub fn buffer(&self) -> &GpuBuffer {
+        &self.buffer
+    }
 }
 
 /// Represents a colored point in space.
@@ -52,13 +48,17 @@ impl LightUniform {
             position,
             _padding: 0,
             color,
-            _padding2: 0
+            _padding2: 0,
         }
     }
 
-    pub fn position(&self) -> &[f32; 3] { &self.position }
+    pub fn position(&self) -> &[f32; 3] {
+        &self.position
+    }
 
-    pub fn color(&self) -> &[f32; 3] { &self.color }
+    pub fn color(&self) -> &[f32; 3] {
+        &self.color
+    }
 }
 
 /// Create a bind group for lighting.
@@ -79,7 +79,6 @@ pub fn create_lighting_bind_group(gpu: &GpuContext, lighting: &Lighting) -> GpuB
         &[wgpu::BindGroupEntry {
             binding: 0,
             resource: lighting.buffer().handle().as_entire_binding(),
-        }]
+        }],
     )
 }
- 

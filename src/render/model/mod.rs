@@ -1,21 +1,26 @@
 pub mod instances;
 
-use std::ops::Range;
-use wgpu::{BindGroup, Buffer};
-use crate::{gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer, texture::GpuTexture}, render::{commands::{BasicRenderCommand, DrawCommand, RenderCommand, VertexBufferCommand}, model::instances::Instances, renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId}}};
+use crate::{
+    gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer, texture::GpuTexture},
+    render::{
+        commands::{BasicRenderCommand, DrawCommand, RenderCommand, VertexBufferCommand},
+        model::instances::Instances,
+        renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId},
+    },
+};
 
 /// Represents something that can be rendered.
 pub struct Model {
     pub meshes: Vec<Mesh>,
-    pub materials: Vec<Material>
+    pub materials: Vec<Material>,
 }
 
 pub struct Material {
     pub name: String,
     pub diffuse_texture: GpuTexture,
-    pub bind_group: GpuBindGroup
+    pub bind_group: GpuBindGroup,
 }
- 
+
 pub struct Mesh {
     pub name: String,
     pub vertex_buffer: GpuBuffer,
@@ -28,11 +33,11 @@ pub struct Mesh {
 impl Mesh {
     /// Convert the mesh + its material (or any material) to a render command.
     pub fn to_render_command(
-        &self, 
+        &self,
         material: &Material,
         pipeline: PipelineId,
         global_bind_group: GlobalBindGroupId,
-        lighting_bind_group: LightingBindGroupId
+        lighting_bind_group: LightingBindGroupId,
     ) -> RenderCommand {
         let command = BasicRenderCommand {
             pipeline,
@@ -47,18 +52,29 @@ impl Mesh {
                 },
                 VertexBufferCommand {
                     buffer: self.instances.buffer().handle().slice(..),
-                    slot: 1
-                }
+                    slot: 1,
+                },
             ],
-            index_buffer: Some((self.index_buffer.handle().slice(..), wgpu::IndexFormat::Uint32)),
-            draw: DrawCommand::Indexed { base_vertex: 0, instances: self.instances.range(), indices: 0..self.num_elements },
+            index_buffer: Some((
+                self.index_buffer.handle().slice(..),
+                wgpu::IndexFormat::Uint32,
+            )),
+            draw: DrawCommand::Indexed {
+                base_vertex: 0,
+                instances: self.instances.range(),
+                indices: 0..self.num_elements,
+            },
         };
         RenderCommand::Basic(command)
     }
 
     /// Update this mesh's instance vertex buffer.
     pub fn update_instance_buffer(&self, gpu: &GpuContext) {
-        gpu.queue().write_buffer(self.instances.buffer().handle(), 0, &self.instances.content());
+        gpu.queue().write_buffer(
+            self.instances.buffer().handle(),
+            0,
+            &self.instances.content(),
+        );
     }
 }
 

@@ -1,15 +1,15 @@
-use winit::event_loop::EventLoop;
 use crate::app::App;
+use winit::event_loop::EventLoop;
 
 pub mod app;
-pub mod handler;
-pub mod state;
 pub mod camera;
-pub mod resources;
-pub mod gpu;
-pub mod render;
-pub mod lighting;
 pub mod constants;
+pub mod gpu;
+pub mod handler;
+pub mod lighting;
+pub mod render;
+pub mod resources;
+pub mod state;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;

@@ -1,6 +1,8 @@
+use crate::{
+    gpu::{bind_group::GpuBindGroup},
+    render::renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId, Renderer},
+};
 use std::ops::Range;
-use crate::{gpu::{bind_group::GpuBindGroup, buffer::GpuBuffer}, render::renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId, Renderer}};
-
 
 /// The types of render commands.
 pub enum RenderCommand<'obj> {
@@ -26,20 +28,20 @@ pub struct BasicRenderCommand<'obj> {
     pub extra_bind_groups: Vec<GpuBindGroup>,
     pub vertex_buffers: Vec<VertexBufferCommand<'obj>>,
     pub index_buffer: Option<(wgpu::BufferSlice<'obj>, wgpu::IndexFormat)>,
-    pub draw: DrawCommand
+    pub draw: DrawCommand,
 }
 
 /// Represents a command for setting a bind group manually.
 pub struct RawBindGroupCommand {
     pub slot: u32,
     pub group: GpuBindGroup,
-    pub offsets: Vec<wgpu::DynamicOffset>
+    pub offsets: Vec<wgpu::DynamicOffset>,
 }
 
 /// Represents a command for setting a vertex buffer manually.
 pub struct VertexBufferCommand<'obj> {
     pub slot: u32,
-    pub buffer: wgpu::BufferSlice<'obj>
+    pub buffer: wgpu::BufferSlice<'obj>,
 }
 
 /// What kind of drawing the render should do.
@@ -47,11 +49,11 @@ pub struct VertexBufferCommand<'obj> {
 pub enum DrawCommand {
     NonIndexed {
         vertices: Range<u32>,
-        instances: Range<u32>
+        instances: Range<u32>,
     },
     Indexed {
         indices: Range<u32>,
         base_vertex: i32,
-        instances: Range<u32>
-    }
+        instances: Range<u32>,
+    },
 }

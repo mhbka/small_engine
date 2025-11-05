@@ -1,17 +1,38 @@
-use std::sync::Arc;
 use cgmath::{Rotation3, Vector3};
 use image::GenericImageView;
-use wgpu::Backends;
-use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Buffer, BufferBindingType, BufferUsages, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor, CompareFunction, DepthBiasState, DepthStencilState, Device, DeviceDescriptor, ExperimentalFeatures, Extent3d, Face, Features, FragmentState, FrontFace, IndexFormat, Instance, InstanceDescriptor, Limits, LoadOp, MultisampleState, Operations, Origin3d, PipelineCompilationOptions, PipelineLayoutDescriptor, PowerPreference, PrimitiveState, PrimitiveTopology, Queue, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, ShaderStages, StencilState, StoreOp, Surface, SurfaceConfiguration, SurfaceError, TexelCopyBufferLayout, TexelCopyTextureInfo, TexelCopyTextureInfoBase, TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension, Trace, VertexState, util::{BufferInitDescriptor, DeviceExt}, wgt::TextureDescriptor};
-use winit::{
-    application::ApplicationHandler, event::*, event_loop::{ActiveEventLoop, EventLoop}, keyboard::{KeyCode, PhysicalKey}, window::Window
-};
+use std::sync::Arc;
 use web_time::Instant;
+use wgpu::Backends;
+use wgpu::{
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Buffer, BufferBindingType,
+    BufferUsages, Color, ColorTargetState, ColorWrites, CommandEncoderDescriptor, CompareFunction,
+    DepthBiasState, DepthStencilState, Device, DeviceDescriptor, ExperimentalFeatures, Extent3d,
+    Face, Features, FragmentState, FrontFace, IndexFormat, Instance, InstanceDescriptor, Limits,
+    LoadOp, MultisampleState, Operations, Origin3d, PipelineCompilationOptions,
+    PipelineLayoutDescriptor, PowerPreference, PrimitiveState, PrimitiveTopology, Queue,
+    RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor,
+    RenderPipeline, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType,
+    ShaderStages, StencilState, StoreOp, Surface, SurfaceConfiguration, SurfaceError,
+    TexelCopyBufferLayout, TexelCopyTextureInfo, TexelCopyTextureInfoBase, TextureDimension,
+    TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, TextureViewDimension,
+    Trace, VertexState,
+    util::{BufferInitDescriptor, DeviceExt},
+    wgt::TextureDescriptor,
+};
+use winit::{
+    application::ApplicationHandler,
+    event::*,
+    event_loop::{ActiveEventLoop, EventLoop},
+    keyboard::{KeyCode, PhysicalKey},
+    window::Window,
+};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
 use crate::camera::create_camera_bind_group;
+use crate::camera::{Camera, CameraController, CameraUniform};
 use crate::gpu::GpuContext;
 use crate::gpu::bind_group::GpuBindGroup;
 use crate::gpu::pipeline::GpuPipeline;
@@ -22,7 +43,6 @@ use crate::render::model::{Model, ModelVertex};
 use crate::render::renderer::Renderer;
 use crate::render::scene::Scene;
 use crate::resources;
-use crate::{camera::{Camera, CameraController, CameraUniform}};
 
 // This will store the state of our game
 pub struct State<'a> {
@@ -30,7 +50,7 @@ pub struct State<'a> {
     gpu: GpuContext,
     renderer: Renderer<'a>,
     scene: Scene,
-    last_frame_update: Instant
+    last_frame_update: Instant,
 }
 
 impl<'a> State<'a> {
@@ -72,10 +92,12 @@ impl<'a> State<'a> {
                 trace: Trace::Off,
             })
             .await?;
-        
+
         // textures
         let surface_caps = surface.get_capabilities(&adapter);
-        let surface_format = surface_caps.formats.iter()
+        let surface_format = surface_caps
+            .formats
+            .iter()
             .find(|f| f.is_srgb())
             .copied()
             .unwrap_or(surface_caps.formats[0]);
@@ -89,29 +111,30 @@ impl<'a> State<'a> {
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
-        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: TextureViewDimension::D2,
-                        sample_type: TextureSampleType::Float { filterable: true },
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: TextureViewDimension::D2,
+                            sample_type: TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::FRAGMENT,
-                    // This should match the filterable field of the
-                    // corresponding Texture entry above.
-                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                    count: None,
-                },
-            ],
-            label: Some("texture_bind_group_layout"),
-        });
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::FRAGMENT,
+                        // This should match the filterable field of the
+                        // corresponding Texture entry above.
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("texture_bind_group_layout"),
+            });
 
         let gpu = GpuContext::new(device, queue);
         let device = gpu.device();
@@ -129,48 +152,44 @@ impl<'a> State<'a> {
 
         // render_pipeline
         let pipeline = GpuPipeline::create_default(
-            "basic_pipeline", 
-            &gpu, 
-            &config, 
+            "basic_pipeline",
+            &gpu,
+            &config,
             &[
                 &texture_bind_group_layout,
                 &camera_bind_group.layout(),
-                &lighting_bind_group.layout()
-            ], 
-            &[
-                ModelVertex::desc(),
-                RawInstance::desc()
+                &lighting_bind_group.layout(),
             ],
-            &shader, 
-            &shader, 
+            &[ModelVertex::desc(), RawInstance::desc()],
+            &shader,
+            &shader,
             Some(DepthStencilState {
                 format: GpuTexture::DEPTH_FORMAT,
                 depth_write_enabled: true,
                 depth_compare: CompareFunction::Less,
                 stencil: StencilState::default(),
-                bias: DepthBiasState::default()
-            })
+                bias: DepthBiasState::default(),
+            }),
         );
 
         // object
-        let obj_model = resources::load_model("cube.obj", &gpu)
-            .await
-            .unwrap();
+        let obj_model = resources::load_model("cube.obj", &gpu).await.unwrap();
 
         // renderer
         let mut renderer = Renderer::new(gpu.clone(), surface, config);
         let pipeline_id = renderer.add_pipelines(vec![pipeline])[0];
         let camera_bind_group_id = renderer.add_global_bind_groups(vec![camera_bind_group])[0];
-        let lighting_bind_group_id = renderer.add_lighting_bind_groups(vec![lighting_bind_group])[0];
+        let lighting_bind_group_id =
+            renderer.add_lighting_bind_groups(vec![lighting_bind_group])[0];
 
         // scene
         let scene = Scene::new(
             vec![obj_model],
-            camera,  
+            camera,
             vec![lighting],
-            pipeline_id, 
+            pipeline_id,
             camera_bind_group_id,
-            lighting_bind_group_id
+            lighting_bind_group_id,
         );
 
         Ok(Self {
@@ -202,9 +221,10 @@ impl<'a> State<'a> {
         for light in self.scene.lights() {
             light.update(|uniform| {
                 let old_position: cgmath::Vector3<_> = uniform.position.into();
-                uniform.position = (cgmath::Quaternion::from_axis_angle((0.0, 1.0, 0.0).into(), cgmath::Deg(1.0))
-                    * old_position)
-                    .into();
+                uniform.position =
+                    (cgmath::Quaternion::from_axis_angle((0.0, 1.0, 0.0).into(), cgmath::Deg(1.0))
+                        * old_position)
+                        .into();
             });
         }
 
@@ -214,7 +234,7 @@ impl<'a> State<'a> {
     pub fn resize(&mut self, width: u32, height: u32) {
         self.renderer.resize(width, height);
     }
-    
+
     pub fn render(&mut self) -> Result<(), SurfaceError> {
         self.window.request_redraw();
         self.renderer.render_scene_for_frame(&self.scene).unwrap();
