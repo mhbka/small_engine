@@ -80,9 +80,10 @@ impl InstanceBuffer {
         range
     }
 
-    /// Writes the internal Vec data to the actual GPU buffer.
+    /// Writes the internal buffered instance data to the actual GPU buffer.
     /// 
-    /// You should do this once all your instance data has been written.
+    /// You should do this once all your instance data has been written,
+    /// and you're ready to render.
     pub fn write(&self) {
         self.gpu.queue().write_buffer(
             self.buffer.handle(), 

@@ -22,6 +22,7 @@ pub struct Renderer<'a> {
     surface_config: wgpu::SurfaceConfiguration,
     surface_is_configured: bool,
     depth_texture: GpuTexture,
+    instance_buffer: InstanceBuffer,
     pipelines: SlotMap<PipelineId, GpuPipeline>,
     global_bind_groups: SlotMap<GlobalBindGroupId, GpuBindGroup>,
     lighting_bind_groups: SlotMap<LightingBindGroupId, GpuBindGroup>,
@@ -36,12 +37,14 @@ impl<'a> Renderer<'a> {
     ) -> Self {
         let depth_texture =
             GpuTexture::create_depth_texture(&gpu, "depth_texture", &surface_config);
+        let instance_buffer = InstanceBuffer::new(gpu.clone(), "instance_buffer".into());
         Self {
             gpu,
             surface,
             surface_config,
             surface_is_configured: false,
             depth_texture,
+            instance_buffer,
             pipelines: SlotMap::with_key(),
             global_bind_groups: SlotMap::with_key(),
             lighting_bind_groups: SlotMap::with_key(),
@@ -112,7 +115,7 @@ impl<'a> Renderer<'a> {
         }
 
         // get the render commands
-        let commands = scene.to_commands(assets)?;
+        let commands = scene.to_commands(assets, &mut self.instance_buffer)?;
 
         // get the surface, encoder, render pass
         let output = self.surface.get_current_texture()?;
@@ -163,7 +166,7 @@ impl<'a> Renderer<'a> {
                     self.write_basic_command(&command, &mut render_pass, i)?
                 }
                 RenderCommand::Mesh(command) => {
-                    self.write_mesh_command( &command, scene.instance_buffer(), &mut render_pass, i)?
+                    self.write_mesh_command( &command, &mut render_pass, i)?
                 }
             }
         }
@@ -262,7 +265,6 @@ impl<'a> Renderer<'a> {
     fn write_mesh_command(
         &self, 
         command: &MeshRenderCommand<'_>,
-        instance_buffer: &InstanceBuffer,
         render_pass: &mut wgpu::RenderPass<'_>,
         index: usize,
     ) -> Result<(), RenderError> {
@@ -298,8 +300,9 @@ impl<'a> Renderer<'a> {
         // normal vertex buffer
         render_pass.set_vertex_buffer(VERTEX_BUFFER_SLOT, command.vertex_buffer);
         
-        // instance vertex buffer - requires the buffer slice from the instance buffer
-        let instance_buffer_slice = instance_buffer
+        // instance vertex buffer - write the buffer data, then get our buffer slices
+        self.instance_buffer.write();
+        let instance_buffer_slice = self.instance_buffer
             .get_slice(command.mesh)
             .ok_or(RenderError::MeshHasNoInstanceData(command.mesh))?;
         render_pass.set_vertex_buffer(INSTANCE_BUFFER_SLOT, instance_buffer_slice);

@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use cgmath::{Matrix, Matrix3, Matrix4, Quaternion, SquareMatrix, Vector3};
+use cgmath::{Matrix, Matrix3, Matrix4, Quaternion, SquareMatrix, Vector3, Zero};
 use wgpu::{VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode};
 
 /// Represents the spacial data for anything.
@@ -10,6 +10,15 @@ pub struct SpacialTransform {
 }
 
 impl SpacialTransform {
+    /// Get the identity transform (ie doesn't do anything).
+    pub fn identity() -> Self {
+        Self {
+            scale: Vector3::new(1.0, 1.0, 1.0),
+            position: Vector3::new(0.0, 0.0, 0.0),
+            rotation: Quaternion::zero()
+        }
+    }
+
     /// Get the uniform data for this transform.
     pub fn to_raw(&self) -> RawSpacialTransform {
         let matrices = self.to_matrices();

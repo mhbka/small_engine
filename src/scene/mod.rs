@@ -29,8 +29,6 @@ pub struct Scene {
 impl Scene {
     /// Construct a scene.
     pub fn new(
-        label: &str,
-        gpu: GpuContext,
         camera: Camera,
         lights: Vec<Lighting>,
         pipeline: PipelineId,
@@ -50,11 +48,14 @@ impl Scene {
     }
 
     /// Convert the scene to render commands.
-    pub fn to_commands(
-        &mut self, 
-        assets: &AssetStore,
+    /// 
+    /// Writes the scene's meshes' instance data into the `instance_buffer`,
+    /// passing their ranges into the render command. 
+    pub fn to_commands<'a>(
+        &'a mut self, 
+        assets: &'a AssetStore,
         instance_buffer: &mut InstanceBuffer
-    ) -> Result<Vec<RenderCommand>, SceneError> {
+    ) -> Result<Vec<RenderCommand<'a>>, SceneError> {
         let mut commands = Vec::new();
 
         for (mesh_id, mesh_instances) in &self.instances_by_mesh {
@@ -92,21 +93,11 @@ impl Scene {
         Ok(commands)
     }
 
-    /// Get the instance buffer for the scene.
-    /// 
-    /// For the renderer to use.
-    pub fn instance_buffer(&self) -> &InstanceBuffer { &self.instance_buffer }
-
     /// Writes any stored "updateable" data to their buffers.
     ///
-    /// Currently, this is for the camera, each mesh's instances, and light uniforms.
-    pub fn update_buffers(&self, gpu: &GpuContext) {
+    /// Currently, this is for the camera and light uniforms.
+    pub fn write_buffers(&self, gpu: &GpuContext) {
         self.camera.update_uniform_buffer(gpu);
-        for model in &self.models {
-            for mesh in &model.meshes {
-                mesh.update_instance_buffer(gpu);
-            }
-        }
         for light in &self.lights {
             light.update_uniform_buffer(gpu);
         }
@@ -115,11 +106,6 @@ impl Scene {
     /// Get the camera.
     pub fn camera(&mut self) -> &mut Camera {
         &mut self.camera
-    }
-
-    /// Get the models.
-    pub fn models(&mut self) -> &mut Vec<Model> {
-        &mut self.models
     }
 
     /// Get the lighting.

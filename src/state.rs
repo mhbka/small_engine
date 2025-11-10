@@ -25,11 +25,12 @@ use crate::gpu::GpuContext;
 use crate::gpu::pipeline::GpuPipeline;
 use crate::gpu::texture::GpuTexture;
 use crate::lighting::{Lighting, create_lighting_bind_group};
-use crate::render::model::instances::RawInstance;
+use crate::render::assets::AssetStore;
 use crate::render::model::ModelVertex;
 use crate::render::renderer::Renderer;
 use crate::scene::Scene;
 use crate::resources;
+use crate::scene::instance_buffer::MeshInstanceData;
 
 // This will store the state of our game
 pub struct State<'a> {
@@ -126,7 +127,10 @@ impl<'a> State<'a> {
                 &camera_bind_group.layout(),
                 &lighting_bind_group.layout(),
             ],
-            &[ModelVertex::desc(), RawInstance::desc()],
+            &[
+                ModelVertex::desc(), 
+                MeshInstanceData::desc()
+            ],
             &shader,
             &shader,
             Some(DepthStencilState {
@@ -137,9 +141,12 @@ impl<'a> State<'a> {
                 bias: DepthBiasState::default(),
             }),
         );
+        
+        // asset store
+        let mut assets = AssetStore::new();
 
         // object
-        let obj_model = resources::load_model("cube.obj", &gpu).await.unwrap();
+        let obj_model = resources::load_model("cube.obj", &gpu, &mut assets).await.unwrap();
 
         // renderer
         let mut renderer = Renderer::new(gpu.clone(), surface, config);
@@ -150,7 +157,6 @@ impl<'a> State<'a> {
 
         // scene
         let scene = Scene::new(
-            vec![obj_model],
             camera,
             vec![lighting],
             pipeline_id,

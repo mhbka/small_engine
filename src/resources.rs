@@ -2,7 +2,6 @@ use crate::{
     gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer, texture::GpuTexture},
     render::{assets::AssetStore, model::{
         self, Material, Model,
-        instance::{Instances, generate_instances},
     }},
 };
 use std::io::{BufReader, Cursor};
@@ -142,11 +141,6 @@ pub async fn load_model(file_name: &str, gpu: &GpuContext, assets: &mut AssetSto
                 gpu,
                 bytemuck::cast_slice(&m.mesh.indices),
             );
-            let instances = Instances::initialize(
-                &format!("{:?}_instances", file_name),
-                gpu,
-                generate_instances(),
-            );
 
             let material_index = m.mesh.material_id.unwrap_or(0);
             let material_id = material_ids[material_index];
@@ -157,7 +151,6 @@ pub async fn load_model(file_name: &str, gpu: &GpuContext, assets: &mut AssetSto
                 index_buffer,
                 num_elements: m.mesh.indices.len() as u32,
                 material: material_id,
-                instances,
             }
         })
         .collect::<Vec<_>>();
