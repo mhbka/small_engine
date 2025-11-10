@@ -6,7 +6,6 @@ use wgpu::{
     ShaderStages, SurfaceConfiguration,
 };
 use winit::keyboard::KeyCode;
-
 use crate::gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer};
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::from_cols(
@@ -37,9 +36,8 @@ impl Camera {
             100.0,
         );
         let mut uniform = CameraUniform::new();
-        uniform.update_view_proj(&data);
-        let buffer =
-            GpuBuffer::create_uniform("camera_buffer", gpu, bytemuck::cast_slice(&[uniform]));
+        uniform.update(&data);
+        let buffer = GpuBuffer::create_uniform("camera_buffer", gpu, bytemuck::cast_slice(&[uniform]));
         let controller = CameraController::new(0.2);
 
         Self {
@@ -53,7 +51,7 @@ impl Camera {
     /// Update the camera's values based on its controller's state.
     pub fn update(&mut self) {
         self.controller.update_camera(&mut self.data);
-        self.uniform.update_view_proj(&self.data);
+        self.uniform.update(&self.data);
     }
 
     pub fn update_uniform_buffer(&self, gpu: &GpuContext) {
@@ -85,12 +83,6 @@ impl Camera {
     }
 }
 
-/// Just contains the camera's bind group and its layout.
-pub struct CameraBindGroup {
-    bind_group: BindGroup,
-    layout: BindGroupLayout,
-}
-
 /// Create the bind group for the camera.
 pub fn create_camera_bind_group(gpu: &GpuContext, camera_buffer: &GpuBuffer) -> GpuBindGroup {
     let layout = gpu
@@ -99,7 +91,7 @@ pub fn create_camera_bind_group(gpu: &GpuContext, camera_buffer: &GpuBuffer) -> 
             label: Some("camera_bind_group_layout"),
             entries: &[BindGroupLayoutEntry {
                 binding: 0,
-                visibility: ShaderStages::VERTEX,
+                visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
                 ty: BindingType::Buffer {
                     ty: BufferBindingType::Uniform,
                     has_dynamic_offset: false,
@@ -152,10 +144,14 @@ impl CameraData {
         }
     }
 
+    pub fn build_view_matrix(&self) -> Matrix4<f32> {
+        Matrix4::look_at_rh(self.eye, self.target, self.up)
+    }
+
     pub fn build_view_projection_matrix(&self) -> Matrix4<f32> {
-        let view = Matrix4::look_at_rh(self.eye, self.target, self.up);
-        let proj = perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
-        return OPENGL_TO_WGPU_MATRIX * proj * view;
+        let view = self.build_view_matrix();
+        let proj = OPENGL_TO_WGPU_MATRIX * perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
+        return proj * view;
     }
 }
 
@@ -164,16 +160,19 @@ impl CameraData {
 #[derive(Debug, Copy, Clone, NoUninit)]
 pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
+    view: [[f32; 4]; 4]
 }
 
 impl CameraUniform {
     pub fn new() -> Self {
         Self {
             view_proj: Matrix4::identity().into(),
+            view: Matrix4::identity().into()
         }
     }
 
-    pub fn update_view_proj(&mut self, camera: &CameraData) {
+    pub fn update(&mut self, camera: &CameraData) {
+        self.view = camera.build_view_matrix().into();
         self.view_proj = camera.build_view_projection_matrix().into();
     }
 }

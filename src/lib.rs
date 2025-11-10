@@ -10,6 +10,7 @@ pub mod lighting;
 pub mod render;
 pub mod resources;
 pub mod state;
+pub mod scene;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;

@@ -1,10 +1,7 @@
 use crate::{
-    constants::{GLOBAL_BIND_GROUP_SLOT, LIGHTING_BIND_GROUP_SLOT, OBJECT_BIND_GROUP_SLOT},
+    constants::{GLOBAL_BIND_GROUP_SLOT, INDEX_BUFFER_FORMAT, INSTANCE_BUFFER_SLOT, LIGHTING_BIND_GROUP_SLOT, OBJECT_BIND_GROUP_SLOT, VERTEX_BUFFER_SLOT},
     gpu::{GpuContext, bind_group::GpuBindGroup, pipeline::GpuPipeline, texture::GpuTexture},
-    render::{
-        commands::{BasicRenderCommand, DrawCommand, RawRenderCommand, RenderCommand},
-        scene::Scene,
-    },
+    render::{assets::{AssetStore, MeshId}, commands::{BasicRenderCommand, DrawCommand, MeshRenderCommand, RawRenderCommand, RenderCommand}}, scene::{Scene, SceneError, instance_buffer::InstanceBuffer},
 };
 use slotmap::{SlotMap, new_key_type};
 use thiserror::Error;
@@ -109,13 +106,13 @@ impl<'a> Renderer<'a> {
     /// Render the given scene only for the frame.
     ///
     /// If any command fails, rendering stops there and this returns a `RenderError`.
-    pub fn render_scene_for_frame(&mut self, scene: &Scene) -> Result<(), RenderError> {
+    pub fn render_scene_for_frame(&mut self, scene: &mut Scene, assets: &AssetStore) -> Result<(), RenderError> {
         if !self.surface_is_configured {
             return Err(RenderError::UnconfiguredSurface);
         }
 
         // get the render commands
-        let commands = scene.to_commands();
+        let commands = scene.to_commands(assets)?;
 
         // get the surface, encoder, render pass
         let output = self.surface.get_current_texture()?;
@@ -160,10 +157,13 @@ impl<'a> Renderer<'a> {
         for (i, command) in commands.iter().enumerate() {
             match command {
                 RenderCommand::Raw(command) => {
-                    self.write_raw_command(command, &mut render_pass, i)?
+                    self.write_raw_command(&command, &mut render_pass, i)?
                 }
                 RenderCommand::Basic(command) => {
-                    self.write_basic_command(command, &mut render_pass, i)?
+                    self.write_basic_command(&command, &mut render_pass, i)?
+                }
+                RenderCommand::Mesh(command) => {
+                    self.write_mesh_command( &command, scene.instance_buffer(), &mut render_pass, i)?
                 }
             }
         }
@@ -256,6 +256,63 @@ impl<'a> Renderer<'a> {
         Ok(())
     }
 
+    /// Write the mesh command.
+    /// 
+    /// Additionally requires the mesh ID + the instance buffer that the mesh's instance data is in.
+    fn write_mesh_command(
+        &self, 
+        command: &MeshRenderCommand<'_>,
+        instance_buffer: &InstanceBuffer,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        index: usize,
+    ) -> Result<(), RenderError> {
+        let pipeline = self
+            .get_pipeline(command.pipeline)
+            .ok_or(RenderError::PipelineNotFound { index })?
+            .handle();
+        render_pass.set_pipeline(pipeline);
+
+        // get and set the bind groups
+        let global_bind_group = self
+            .get_global_bind_group(command.global_bind_group)
+            .ok_or(RenderError::GlobalBindGroupNotFound { index })?
+            .handle();
+        let lighting_bind_group = self
+            .get_lighting_bind_group(command.lighting_bind_group)
+            .ok_or(RenderError::LightingBindGroupNotFound { index })?
+            .handle();
+        render_pass.set_bind_group(GLOBAL_BIND_GROUP_SLOT, global_bind_group, &[]);
+        render_pass.set_bind_group(LIGHTING_BIND_GROUP_SLOT, lighting_bind_group, &[]);
+        render_pass.set_bind_group(
+            OBJECT_BIND_GROUP_SLOT,
+            command.object_bind_group.handle(),
+            &[],
+        );
+
+        // extra bind groups are slots 3 and above
+        for (i, group) in command.extra_bind_groups.iter().enumerate() {
+            let i = i + 3;
+            render_pass.set_bind_group(i as u32, group.handle(), &[]);
+        }
+
+        // normal vertex buffer
+        render_pass.set_vertex_buffer(VERTEX_BUFFER_SLOT, command.vertex_buffer);
+        
+        // instance vertex buffer - requires the buffer slice from the instance buffer
+        let instance_buffer_slice = instance_buffer
+            .get_slice(command.mesh)
+            .ok_or(RenderError::MeshHasNoInstanceData(command.mesh))?;
+        render_pass.set_vertex_buffer(INSTANCE_BUFFER_SLOT, instance_buffer_slice);
+
+        // index buffer
+        render_pass.set_index_buffer(command.index_buffer, INDEX_BUFFER_FORMAT);
+
+        // draw
+        self.draw(command.draw.clone(), render_pass);
+
+        Ok(())
+    }
+
     /// Handle the draw command.
     fn draw(&self, draw_command: DrawCommand, render_pass: &mut wgpu::RenderPass<'_>) {
         match draw_command {
@@ -283,6 +340,10 @@ pub enum RenderError {
     LightingBindGroupNotFound { index: usize },
     #[error("The surface is not configured yet")]
     UnconfiguredSurface,
+    #[error("The mesh {0:?} didn't have a corresponding instance buffer slice")]
+    MeshHasNoInstanceData(MeshId),
+    #[error("{0}")]
+    Scene(#[from] SceneError),
     #[error("{0}")]
     Surface(#[from] wgpu::SurfaceError),
 }

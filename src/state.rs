@@ -28,7 +28,7 @@ use crate::lighting::{Lighting, create_lighting_bind_group};
 use crate::render::model::instances::RawInstance;
 use crate::render::model::ModelVertex;
 use crate::render::renderer::Renderer;
-use crate::render::scene::Scene;
+use crate::scene::Scene;
 use crate::resources;
 
 // This will store the state of our game
@@ -44,7 +44,6 @@ impl<'a> State<'a> {
     pub async fn new(window: Arc<Window>) -> anyhow::Result<State<'a>> {
         let size = window.inner_size();
 
-        // The instance is a handle to our GPU
         let instance = Instance::new(&InstanceDescriptor {
             #[cfg(not(target_arch = "wasm32"))]
             backends: Backends::PRIMARY,
@@ -80,7 +79,7 @@ impl<'a> State<'a> {
             })
             .await?;
 
-        // textures
+        // texture stuff
         let surface_caps = surface.get_capabilities(&adapter);
         let surface_format = surface_caps
             .formats
@@ -98,28 +97,8 @@ impl<'a> State<'a> {
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                entries: &[
-                    BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: TextureViewDimension::D2,
-                            sample_type: TextureSampleType::Float { filterable: true },
-                        },
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStages::FRAGMENT,
-                        // This should match the filterable field of the
-                        // corresponding Texture entry above.
-                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
+        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                entries: &GpuTexture::DIFFUSE_BIND_GROUP_LAYOUT_ENTRIES,
                 label: Some("texture_bind_group_layout"),
             });
 
@@ -134,7 +113,7 @@ impl<'a> State<'a> {
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
 
         // lighting
-        let lighting = Lighting::create(&gpu, "lighting", [2.0, 2.0, 2.0], [1.0, 1.0, 1.0]);
+        let lighting = Lighting::create(&gpu, "lighting", [2.0, 10.0, 2.0], [1.0, 0.0, 0.0]);
         let lighting_bind_group = create_lighting_bind_group(&gpu, &lighting);
 
         // render_pipeline

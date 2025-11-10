@@ -1,6 +1,6 @@
 use crate::{
-    gpu::{bind_group::GpuBindGroup},
-    render::renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId},
+    gpu::bind_group::GpuBindGroup,
+    render::{assets::MeshId, renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId}}, scene::instance_buffer::InstanceBufferRange,
 };
 use std::ops::Range;
 
@@ -8,6 +8,7 @@ use std::ops::Range;
 pub enum RenderCommand<'obj> {
     Raw(RawRenderCommand<'obj>),
     Basic(BasicRenderCommand<'obj>),
+    Mesh(MeshRenderCommand<'obj>)
 }
 
 /// An escape hatch render command where you can describe the bind groups and buffers to use, without the global bind group.
@@ -29,6 +30,20 @@ pub struct BasicRenderCommand<'obj> {
     pub vertex_buffers: Vec<VertexBufferCommand<'obj>>,
     pub index_buffer: Option<(wgpu::BufferSlice<'obj>, wgpu::IndexFormat)>,
     pub draw: DrawCommand,
+}
+
+/// A more restrictive render command that properly describes rendering of a mesh.
+pub struct MeshRenderCommand<'obj> {
+    pub mesh: MeshId,
+    pub pipeline: PipelineId,
+    pub global_bind_group: GlobalBindGroupId,
+    pub lighting_bind_group: LightingBindGroupId,
+    pub object_bind_group: GpuBindGroup,
+    pub extra_bind_groups: Vec<GpuBindGroup>,
+    pub vertex_buffer: wgpu::BufferSlice<'obj>,
+    pub instance_buffer_range: InstanceBufferRange,
+    pub index_buffer: wgpu::BufferSlice<'obj>,
+    pub draw: DrawCommand
 }
 
 /// Represents a command for setting a bind group manually.

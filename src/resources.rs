@@ -1,9 +1,9 @@
 use crate::{
     gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer, texture::GpuTexture},
-    render::model::{
+    render::{assets::AssetStore, model::{
         self, Material, Model,
-        instances::{Instances, generate_instances},
-    },
+        instance::{Instances, generate_instances},
+    }},
 };
 use std::io::{BufReader, Cursor};
 
@@ -58,7 +58,7 @@ pub async fn load_texture(file_name: &str, gpu: &GpuContext) -> anyhow::Result<G
     GpuTexture::from_bytes(gpu, &data, file_name)
 }
 
-pub async fn load_model(file_name: &str, gpu: &GpuContext) -> anyhow::Result<Model> {
+pub async fn load_model(file_name: &str, gpu: &GpuContext, assets: &mut AssetStore) -> anyhow::Result<Model> {
     let obj_text = load_string(file_name).await?;
     let obj_cursor = Cursor::new(obj_text);
     let mut obj_reader = BufReader::new(obj_cursor);
@@ -90,6 +90,8 @@ pub async fn load_model(file_name: &str, gpu: &GpuContext) -> anyhow::Result<Mod
             bind_group,
         })
     }
+
+    let mut material_ids = assets.add_materials(materials);
 
     let meshes = models
         .into_iter()
@@ -146,16 +148,24 @@ pub async fn load_model(file_name: &str, gpu: &GpuContext) -> anyhow::Result<Mod
                 generate_instances(),
             );
 
+            let material_index = m.mesh.material_id.unwrap_or(0);
+            let material_id = material_ids[material_index];
+
             model::Mesh {
                 name: file_name.to_string(),
                 vertex_buffer,
                 index_buffer,
                 num_elements: m.mesh.indices.len() as u32,
-                material: m.mesh.material_id.unwrap_or(0),
+                material: material_id,
                 instances,
             }
         })
         .collect::<Vec<_>>();
 
-    Ok(model::Model { meshes, materials })
+    let mesh_ids = assets.add_meshes(meshes);
+
+    Ok(model::Model { 
+        meshes: mesh_ids, 
+        materials: material_ids 
+    })
 }

@@ -13,6 +13,27 @@ impl GpuTexture {
     /// The texture format for depth texture.
     pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
+    /// The bind group layout entries for a diffuse texture.
+    pub const DIFFUSE_BIND_GROUP_LAYOUT_ENTRIES: [wgpu::BindGroupLayoutEntry; 2] = [
+        wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Texture {
+                multisampled: false,
+                view_dimension: wgpu::TextureViewDimension::D2,
+                sample_type: wgpu::TextureSampleType::Float { filterable: true },
+            },
+            count: None,
+        },
+        wgpu::BindGroupLayoutEntry {
+            binding: 1,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            // This should match the filterable field of the corresponding Texture entry above.
+            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+            count: None,
+        },
+    ];
+
     /// Get the texture.
     pub fn handle(&self) -> &wgpu::Texture {
         &self.texture
@@ -149,25 +170,7 @@ impl GpuTexture {
         [wgpu::BindGroupLayoutEntry; 2],
         [wgpu::BindGroupEntry<'a>; 2],
     ) {
-        let layout_entries = [
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Texture {
-                    multisampled: false,
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                // This should match the filterable field of the corresponding Texture entry above.
-                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                count: None,
-            },
-        ];
+        let layout_entries = Self::DIFFUSE_BIND_GROUP_LAYOUT_ENTRIES;
         let entries = [
             wgpu::BindGroupEntry {
                 binding: 0,
