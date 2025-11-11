@@ -36,7 +36,7 @@ impl GpuBuffer {
             label: Some(label),
             size,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: true,
+            mapped_at_creation: false,
         });
         Self { buffer }
     }

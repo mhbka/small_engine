@@ -87,11 +87,16 @@ impl InstanceBuffer {
     /// You should do this once all your instance data has been written,
     /// and you're ready to render.
     pub fn write(&self) {
+        if self.buffer.handle().size() < (self.buffer_data.len() * size_of::<MeshInstanceData>()) as u64 {
+            panic!("Instance buffer data is larger than buffer's capacity!");
+        }
+
         self.gpu.queue().write_buffer(
             self.buffer.handle(),
             0,
             &bytemuck::cast_slice(&self.buffer_data),
         );
+        self.gpu.queue().submit([]);
     }
 
     /// Get the buffer slice for the given mesh, if it exists.

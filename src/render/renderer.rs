@@ -128,6 +128,7 @@ impl<'a> Renderer<'a> {
 
         // get the render commands
         let commands = scene.to_commands(&self.assets, &mut self.instance_buffer)?;
+        self.instance_buffer.write();
 
         // get the surface, encoder, render pass
         let output = self.surface.get_current_texture()?;
@@ -187,6 +188,9 @@ impl<'a> Renderer<'a> {
         drop(render_pass);
         self.gpu.queue().submit(std::iter::once(encoder.finish()));
         output.present();
+
+        // clear the instance buffer
+        self.instance_buffer.clear();
 
         Ok(())
     }
@@ -313,7 +317,6 @@ impl<'a> Renderer<'a> {
         render_pass.set_vertex_buffer(VERTEX_BUFFER_SLOT, command.vertex_buffer);
 
         // instance vertex buffer - write the buffer data, then get our buffer slices
-        self.instance_buffer.write();
         let instance_buffer_slice = self
             .instance_buffer
             .get_slice(command.mesh)
