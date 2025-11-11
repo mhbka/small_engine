@@ -15,7 +15,7 @@ impl SpacialTransform {
         Self {
             scale: Vector3::new(1.0, 1.0, 1.0),
             position: Vector3::new(0.0, 0.0, 0.0),
-            rotation: Quaternion::zero()
+            rotation: Quaternion::zero(),
         }
     }
 
@@ -24,7 +24,7 @@ impl SpacialTransform {
         let matrices = self.to_matrices();
         RawSpacialTransform {
             model: matrices.0.into(),
-            normal: matrices.1.into()
+            normal: matrices.1.into(),
         }
     }
 
@@ -34,24 +34,24 @@ impl SpacialTransform {
             (Matrix4::from_translation(self.position)
                 * Matrix4::from(self.rotation)
                 * Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, self.scale.z))
-                .into(),
+            .into(),
             Matrix3::from(self.rotation)
                 .invert()
                 .unwrap_or(Matrix3::identity())
                 .transpose()
-                .into()
+                .into(),
         )
     }
 
     /// Combine this transform with another, outputting the raw transform.
-    /// 
+    ///
     /// (Assuming this is the global transform) used to combine with local transform for the instance's overall transform.
     pub fn combine(&self, b: &SpacialTransform) -> RawSpacialTransform {
         let (self_model, self_norm) = self.to_matrices();
         let (b_model, b_norm) = b.to_matrices();
-        RawSpacialTransform  {
+        RawSpacialTransform {
             model: (self_model * b_model).into(),
-            normal: (self_norm * b_norm).into()
+            normal: (self_norm * b_norm).into(),
         }
     }
 }
@@ -61,7 +61,7 @@ impl SpacialTransform {
 #[derive(Copy, Clone, Pod, Zeroable)]
 pub struct RawSpacialTransform {
     model: [[f32; 4]; 4],
-    normal: [[f32; 3]; 3]
+    normal: [[f32; 3]; 3],
 }
 
 impl RawSpacialTransform {

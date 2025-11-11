@@ -1,6 +1,10 @@
 use crate::{
     gpu::bind_group::GpuBindGroup,
-    render::{assets::MeshId, renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId}}, scene::instance_buffer::InstanceBufferRange,
+    render::{
+        assets::MeshId,
+        renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId},
+    },
+    scene::instance_buffer::InstanceBufferRange,
 };
 use std::ops::Range;
 
@@ -8,7 +12,7 @@ use std::ops::Range;
 pub enum RenderCommand<'obj> {
     Raw(RawRenderCommand<'obj>),
     Basic(BasicRenderCommand<'obj>),
-    Mesh(MeshRenderCommand<'obj>)
+    Mesh(MeshRenderCommand<'obj>),
 }
 
 /// An escape hatch render command where you can describe the bind groups and buffers to use, without the global bind group.
@@ -43,7 +47,7 @@ pub struct MeshRenderCommand<'obj> {
     pub vertex_buffer: wgpu::BufferSlice<'obj>,
     pub instance_buffer_range: InstanceBufferRange,
     pub index_buffer: wgpu::BufferSlice<'obj>,
-    pub draw: DrawCommand
+    pub draw: DrawCommand,
 }
 
 /// Represents a command for setting a bind group manually.

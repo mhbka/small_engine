@@ -1,17 +1,25 @@
+pub mod instance_buffer;
 pub mod node;
 pub mod spacial_transform;
-pub mod instance_buffer;
 
 use slotmap::{SecondaryMap, SlotMap};
 use thiserror::Error;
 
 use crate::{
     camera::Camera,
-    gpu::{GpuContext, buffer::GpuBuffer},
+    gpu::GpuContext,
     lighting::Lighting,
     render::{
-        assets::{AssetStore, MaterialId, MeshId}, commands::RenderCommand, model::{Material, Mesh, Model, instance::{MeshInstance, MeshInstanceId}}, renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId}
-    }, scene::{instance_buffer::InstanceBuffer, node::{SceneNode, SceneNodeId}, spacial_transform::RawSpacialTransform},
+        assets::{AssetStore, MaterialId, MeshId},
+        commands::RenderCommand,
+        model::instance::{MeshInstance, MeshInstanceId},
+        renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId},
+    },
+    scene::{
+        instance_buffer::InstanceBuffer,
+        node::{SceneNode, SceneNodeId},
+        spacial_transform::RawSpacialTransform,
+    },
 };
 
 /// The main representation of "something" in the game.
@@ -48,13 +56,13 @@ impl Scene {
     }
 
     /// Convert the scene to render commands.
-    /// 
+    ///
     /// Writes the scene's meshes' instance data into the `instance_buffer`,
-    /// passing their ranges into the render command. 
+    /// passing their ranges into the render command.
     pub fn to_commands<'a>(
-        &'a self, 
+        &'a self,
         assets: &'a AssetStore,
-        instance_buffer: &mut InstanceBuffer
+        instance_buffer: &mut InstanceBuffer,
     ) -> Result<Vec<RenderCommand<'a>>, SceneError> {
         let mut commands = Vec::new();
 
@@ -68,10 +76,12 @@ impl Scene {
             let instance_transforms: Vec<RawSpacialTransform> = mesh_instances
                 .iter()
                 .map(|&inst_id| {
-                    let instance = self.mesh_instances
+                    let instance = self
+                        .mesh_instances
                         .get(inst_id)
                         .ok_or(SceneError::MeshInstanceNotFound(inst_id))?;
-                    let instance_node = self.scene_nodes
+                    let instance_node = self
+                        .scene_nodes
                         .get(instance.node)
                         .ok_or(SceneError::SceneNodeNotFound(instance.node))?;
                     let transform = instance_node.get_transform();
@@ -81,11 +91,11 @@ impl Scene {
             let instance_buffer_range = instance_buffer.add(instance_transforms, mesh_id);
             let mesh_commands = mesh.to_render_command(
                 mesh_id,
-                material, 
-                self.pipeline, 
-                instance_buffer_range, 
-                self.global_bind_group, 
-                self.lighting_bind_group
+                material,
+                self.pipeline,
+                instance_buffer_range,
+                self.global_bind_group,
+                self.lighting_bind_group,
             );
             commands.push(mesh_commands);
         }
@@ -112,14 +122,21 @@ impl Scene {
     }
 
     /// Add the mesh instances under that mesh, returning their IDs.
-    pub fn add_mesh_instances(&mut self, mesh: MeshId, instances: Vec<MeshInstance>) -> Vec<MeshInstanceId> {
+    pub fn add_mesh_instances(
+        &mut self,
+        mesh: MeshId,
+        instances: Vec<MeshInstance>,
+    ) -> Vec<MeshInstanceId> {
         let mut instance_ids = instances
             .into_iter()
             .map(|inst| self.mesh_instances.insert(inst))
             .collect();
         match self.instances_by_mesh.get_mut(mesh) {
             Some(cur_instances) => cur_instances.append(&mut instance_ids),
-            None => self.instances_by_mesh.insert(mesh, instance_ids.clone()).map_or((), |_| ())
+            None => self
+                .instances_by_mesh
+                .insert(mesh, instance_ids.clone())
+                .map_or((), |_| ()),
         }
         instance_ids
     }

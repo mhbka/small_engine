@@ -1,6 +1,6 @@
 use slotmap::{SlotMap, new_key_type};
 
-use crate::render::model::{Material, Mesh, Model};
+use crate::render::model::{Material, Mesh};
 
 new_key_type! {
     pub struct MeshId;
@@ -9,7 +9,7 @@ new_key_type! {
 
 pub struct AssetStore {
     meshes: SlotMap<MeshId, Mesh>,
-    materials: SlotMap<MaterialId, Material>
+    materials: SlotMap<MaterialId, Material>,
 }
 
 impl AssetStore {
@@ -17,10 +17,10 @@ impl AssetStore {
     pub fn new() -> Self {
         Self {
             meshes: SlotMap::with_key(),
-            materials: SlotMap::with_key()
+            materials: SlotMap::with_key(),
         }
     }
-    
+
     /// Add materials to the store.
     pub fn add_materials(&mut self, materials: Vec<Material>) -> Vec<MaterialId> {
         materials
@@ -31,10 +31,7 @@ impl AssetStore {
 
     /// Add meshes to the store.
     pub fn add_meshes(&mut self, meshes: Vec<Mesh>) -> Vec<MeshId> {
-        meshes
-            .into_iter()
-            .map(|m| self.meshes.insert(m))
-            .collect()
+        meshes.into_iter().map(|m| self.meshes.insert(m)).collect()
     }
 
     /// Get a material.

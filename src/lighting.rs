@@ -23,7 +23,11 @@ impl Lighting {
 
     /// Updates the uniform buffer for this light.
     pub fn update_uniform_buffer(&self, gpu: &GpuContext) {
-        gpu.queue().write_buffer(self.buffer.handle(), 0, bytemuck::cast_slice(&[self.uniform]));
+        gpu.queue().write_buffer(
+            self.buffer.handle(),
+            0,
+            bytemuck::cast_slice(&[self.uniform]),
+        );
     }
 
     pub fn uniform(&mut self) -> &mut LightUniform {

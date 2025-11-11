@@ -1,5 +1,8 @@
 use crate::gpu::GpuContext;
-use wgpu::{BufferDescriptor, util::{BufferInitDescriptor, DeviceExt}};
+use wgpu::{
+    BufferDescriptor,
+    util::{BufferInitDescriptor, DeviceExt},
+};
 
 #[derive(Clone, Debug)]
 pub struct GpuBuffer {
@@ -26,7 +29,7 @@ impl GpuBuffer {
         });
         Self { buffer }
     }
- 
+
     /// Creates a writeable vertex buffer that is uninitialized but has fixed capacity of `size`.
     pub fn create_writeable_vertex_uninit(label: &str, gpu: &GpuContext, size: u64) -> Self {
         let buffer = gpu.device().create_buffer(&BufferDescriptor {

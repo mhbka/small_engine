@@ -1,8 +1,9 @@
 use crate::{
     gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer, texture::GpuTexture},
-    render::{assets::AssetStore, model::{
-        self, Material, Model,
-    }},
+    render::{
+        assets::AssetStore,
+        model::{self, Material, Model},
+    },
 };
 use std::io::{BufReader, Cursor};
 
@@ -58,7 +59,11 @@ pub async fn load_texture(file_name: &str, gpu: &GpuContext) -> anyhow::Result<G
 }
 
 /// Loads a model from the given file into the asset store.
-pub async fn load_model(file_name: &str, gpu: &GpuContext, assets: &mut AssetStore) -> anyhow::Result<Model> {
+pub async fn load_model(
+    file_name: &str,
+    gpu: &GpuContext,
+    assets: &mut AssetStore,
+) -> anyhow::Result<Model> {
     let obj_text = load_string(file_name).await?;
     let obj_cursor = Cursor::new(obj_text);
     let mut obj_reader = BufReader::new(obj_cursor);
@@ -158,8 +163,8 @@ pub async fn load_model(file_name: &str, gpu: &GpuContext, assets: &mut AssetSto
 
     let mesh_ids = assets.add_meshes(meshes);
 
-    Ok(model::Model { 
-        meshes: mesh_ids, 
-        materials: material_ids 
+    Ok(model::Model {
+        meshes: mesh_ids,
+        materials: material_ids,
     })
 }

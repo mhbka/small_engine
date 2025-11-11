@@ -1,12 +1,11 @@
+use crate::gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer};
 use bytemuck::NoUninit;
 use cgmath::{Deg, Matrix4, Point3, SquareMatrix, Vector3, perspective};
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, BufferBindingType,
-    ShaderStages, SurfaceConfiguration,
+    BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
+    BindingType, BufferBindingType, ShaderStages, SurfaceConfiguration,
 };
 use winit::keyboard::KeyCode;
-use crate::gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer};
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::from_cols(
     cgmath::Vector4::new(1.0, 0.0, 0.0, 0.0),
@@ -37,7 +36,8 @@ impl Camera {
         );
         let mut uniform = CameraUniform::new();
         uniform.update(&data);
-        let buffer = GpuBuffer::create_uniform("camera_buffer", gpu, bytemuck::cast_slice(&[uniform]));
+        let buffer =
+            GpuBuffer::create_uniform("camera_buffer", gpu, bytemuck::cast_slice(&[uniform]));
         let controller = CameraController::new(0.2);
 
         Self {
@@ -150,7 +150,8 @@ impl CameraData {
 
     pub fn build_view_projection_matrix(&self) -> Matrix4<f32> {
         let view = self.build_view_matrix();
-        let proj = OPENGL_TO_WGPU_MATRIX * perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
+        let proj =
+            OPENGL_TO_WGPU_MATRIX * perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
         return proj * view;
     }
 }
@@ -160,14 +161,14 @@ impl CameraData {
 #[derive(Debug, Copy, Clone, NoUninit)]
 pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
-    view: [[f32; 4]; 4]
+    view: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
     pub fn new() -> Self {
         Self {
             view_proj: Matrix4::identity().into(),
-            view: Matrix4::identity().into()
+            view: Matrix4::identity().into(),
         }
     }
 

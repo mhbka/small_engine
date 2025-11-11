@@ -4,23 +4,18 @@ use std::sync::Arc;
 use web_time::Instant;
 use wgpu::Backends;
 use wgpu::{
-    BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, CompareFunction,
-    DepthBiasState, DepthStencilState, DeviceDescriptor, ExperimentalFeatures, Features, Instance, InstanceDescriptor, Limits, PowerPreference, RequestAdapterOptions, SamplerBindingType,
-    ShaderStages, StencilState, SurfaceConfiguration, SurfaceError, TextureSampleType, TextureUsages, TextureViewDimension,
-    Trace,
+    BindGroupLayoutDescriptor, CompareFunction, DepthBiasState, DepthStencilState,
+    DeviceDescriptor, ExperimentalFeatures, Features, Instance, InstanceDescriptor, Limits,
+    PowerPreference, RequestAdapterOptions, StencilState, SurfaceConfiguration, SurfaceError,
+    TextureUsages, Trace,
 };
-use winit::{
-    event_loop::ActiveEventLoop,
-    keyboard::KeyCode,
-    window::Window,
-};
+use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-use crate::camera::create_camera_bind_group;
 use crate::camera::Camera;
+use crate::camera::create_camera_bind_group;
 use crate::gpu::GpuContext;
 use crate::gpu::pipeline::GpuPipeline;
 use crate::gpu::texture::GpuTexture;
@@ -29,8 +24,8 @@ use crate::render::assets::AssetStore;
 use crate::render::model::ModelVertex;
 use crate::render::model::instance::MeshInstance;
 use crate::render::renderer::Renderer;
-use crate::scene::Scene;
 use crate::resources;
+use crate::scene::Scene;
 use crate::scene::instance_buffer::MeshInstanceData;
 use crate::scene::node::generate_example_nodes;
 
@@ -100,7 +95,8 @@ impl<'a> State<'a> {
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
-        let texture_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 entries: &GpuTexture::DIFFUSE_BIND_GROUP_LAYOUT_ENTRIES,
                 label: Some("texture_bind_group_layout"),
             });
@@ -129,10 +125,7 @@ impl<'a> State<'a> {
                 &camera_bind_group.layout(),
                 &lighting_bind_group.layout(),
             ],
-            &[
-                ModelVertex::desc(), 
-                MeshInstanceData::desc()
-            ],
+            &[ModelVertex::desc(), MeshInstanceData::desc()],
             &shader,
             &shader,
             Some(DepthStencilState {
@@ -143,12 +136,14 @@ impl<'a> State<'a> {
                 bias: DepthBiasState::default(),
             }),
         );
-        
+
         // asset store
         let mut assets = AssetStore::new();
 
         // object
-        let obj_model = resources::load_model("cube.obj", &gpu, &mut assets).await.unwrap();
+        let obj_model = resources::load_model("cube.obj", &gpu, &mut assets)
+            .await
+            .unwrap();
 
         // scene nodes
         let nodes = generate_example_nodes();
@@ -171,7 +166,8 @@ impl<'a> State<'a> {
 
         // scene nodes + mesh instances
         let node_ids = scene.add_nodes(nodes);
-        let mesh_instances = obj_model.meshes
+        let mesh_instances = obj_model
+            .meshes
             .iter()
             .map(|&mesh| {
                 let instances = node_ids

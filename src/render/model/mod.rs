@@ -1,11 +1,13 @@
 pub mod instance;
 
-use std::ops::Range;
 use crate::{
-    gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer, texture::GpuTexture},
+    gpu::{bind_group::GpuBindGroup, buffer::GpuBuffer, texture::GpuTexture},
     render::{
-        assets::{MaterialId, MeshId}, commands::{BasicRenderCommand, DrawCommand, MeshRenderCommand, RenderCommand, VertexBufferCommand}, renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId}
-    }, scene::instance_buffer::InstanceBufferRange,
+        assets::{MaterialId, MeshId},
+        commands::{DrawCommand, MeshRenderCommand, RenderCommand},
+        renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId},
+    },
+    scene::instance_buffer::InstanceBufferRange,
 };
 
 /// Represents something that can be rendered.
@@ -53,7 +55,7 @@ impl Mesh {
                 base_vertex: 0,
                 instances: 0..(instance_buffer_range.end - instance_buffer_range.start) as u32,
                 indices: 0..self.num_elements,
-            }
+            },
         };
 
         RenderCommand::Mesh(command)

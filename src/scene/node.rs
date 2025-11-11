@@ -1,5 +1,5 @@
-use cgmath::{InnerSpace, Rotation3, Vector3};
 use cgmath::Zero;
+use cgmath::{InnerSpace, Rotation3, Vector3};
 use slotmap::new_key_type;
 
 use crate::scene::spacial_transform::{RawSpacialTransform, SpacialTransform};
@@ -13,7 +13,7 @@ pub struct SceneNode {
     parent: Option<SceneNodeId>,
     children: Vec<SceneNodeId>,
     local_transform: SpacialTransform,
-    global_transform: SpacialTransform
+    global_transform: SpacialTransform,
 }
 
 impl SceneNode {
@@ -22,13 +22,13 @@ impl SceneNode {
         parent: Option<SceneNodeId>,
         children: Vec<SceneNodeId>,
         local_transform: SpacialTransform,
-        global_transform: SpacialTransform
+        global_transform: SpacialTransform,
     ) -> Self {
         Self {
             parent,
             children,
             local_transform,
-            global_transform
+            global_transform,
         }
     }
 
@@ -38,7 +38,9 @@ impl SceneNode {
     }
 
     /// Get the node's local transform mutably.
-    pub fn local_transform(&mut self) -> &mut SpacialTransform { &mut self.local_transform } 
+    pub fn local_transform(&mut self) -> &mut SpacialTransform {
+        &mut self.local_transform
+    }
 }
 
 /// Just generate some spaced nodes as an example.
@@ -54,7 +56,7 @@ pub fn generate_example_nodes() -> Vec<SceneNode> {
     pub const ROTATION_SPEED: f32 = 1.0;
     pub const MAX_VERTICAL_OFFSET: f32 = 0.3;
     const SPACE_BETWEEN: f32 = 3.0;
-    
+
     let transforms = (0..NUM_INSTANCES_PER_ROW)
         .flat_map(|z| {
             (0..NUM_INSTANCES_PER_ROW).map(move |x| {
@@ -72,12 +74,7 @@ pub fn generate_example_nodes() -> Vec<SceneNode> {
                     position,
                     rotation,
                 };
-                SceneNode::new(
-                    None,
-                    vec![],
-                    transform,
-                    SpacialTransform::identity()
-                )
+                SceneNode::new(None, vec![], transform, SpacialTransform::identity())
             })
         })
         .collect::<Vec<_>>();

@@ -1,7 +1,16 @@
 use crate::{
-    constants::{GLOBAL_BIND_GROUP_SLOT, INDEX_BUFFER_FORMAT, INSTANCE_BUFFER_SLOT, LIGHTING_BIND_GROUP_SLOT, OBJECT_BIND_GROUP_SLOT, VERTEX_BUFFER_SLOT},
+    constants::{
+        GLOBAL_BIND_GROUP_SLOT, INDEX_BUFFER_FORMAT, INSTANCE_BUFFER_SLOT,
+        LIGHTING_BIND_GROUP_SLOT, OBJECT_BIND_GROUP_SLOT, VERTEX_BUFFER_SLOT,
+    },
     gpu::{GpuContext, bind_group::GpuBindGroup, pipeline::GpuPipeline, texture::GpuTexture},
-    render::{assets::{AssetStore, MeshId}, commands::{BasicRenderCommand, DrawCommand, MeshRenderCommand, RawRenderCommand, RenderCommand}}, scene::{Scene, SceneError, instance_buffer::InstanceBuffer},
+    render::{
+        assets::{AssetStore, MeshId},
+        commands::{
+            BasicRenderCommand, DrawCommand, MeshRenderCommand, RawRenderCommand, RenderCommand,
+        },
+    },
+    scene::{Scene, SceneError, instance_buffer::InstanceBuffer},
 };
 use slotmap::{SlotMap, new_key_type};
 use thiserror::Error;
@@ -35,9 +44,10 @@ impl<'a> Renderer<'a> {
         gpu: GpuContext,
         surface: wgpu::Surface<'a>,
         surface_config: wgpu::SurfaceConfiguration,
-        assets: AssetStore
+        assets: AssetStore,
     ) -> Self {
-        let depth_texture = GpuTexture::create_depth_texture(&gpu, "depth_texture", &surface_config);
+        let depth_texture =
+            GpuTexture::create_depth_texture(&gpu, "depth_texture", &surface_config);
         let instance_buffer = InstanceBuffer::new(gpu.clone(), "instance_buffer".into());
         Self {
             gpu,
@@ -262,10 +272,10 @@ impl<'a> Renderer<'a> {
     }
 
     /// Write the mesh command.
-    /// 
+    ///
     /// Additionally requires the mesh ID + the instance buffer that the mesh's instance data is in.
     fn write_mesh_command(
-        &self, 
+        &self,
         command: &MeshRenderCommand<'_>,
         render_pass: &mut wgpu::RenderPass<'_>,
         index: usize,
@@ -301,10 +311,11 @@ impl<'a> Renderer<'a> {
 
         // normal vertex buffer
         render_pass.set_vertex_buffer(VERTEX_BUFFER_SLOT, command.vertex_buffer);
-        
+
         // instance vertex buffer - write the buffer data, then get our buffer slices
         self.instance_buffer.write();
-        let instance_buffer_slice = self.instance_buffer
+        let instance_buffer_slice = self
+            .instance_buffer
             .get_slice(command.mesh)
             .ok_or(RenderError::MeshHasNoInstanceData(command.mesh))?;
         render_pass.set_vertex_buffer(INSTANCE_BUFFER_SLOT, instance_buffer_slice);
