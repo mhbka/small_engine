@@ -10,13 +10,9 @@ new_key_type! {
 }
 
 pub struct SceneNode {
-    /// The parent node for this node.
     parent: Option<SceneNodeId>,
-    /// Any children for this node.
     children: Vec<SceneNodeId>,
-    /// The local spacial transform for this node.
     local_transform: SpacialTransform,
-    /// The global transform for this node (from its parents; precomputed for efficiency).
     global_transform: SpacialTransform
 }
 

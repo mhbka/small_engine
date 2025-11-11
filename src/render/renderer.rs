@@ -23,6 +23,7 @@ pub struct Renderer<'a> {
     surface_is_configured: bool,
     depth_texture: GpuTexture,
     instance_buffer: InstanceBuffer,
+    assets: AssetStore,
     pipelines: SlotMap<PipelineId, GpuPipeline>,
     global_bind_groups: SlotMap<GlobalBindGroupId, GpuBindGroup>,
     lighting_bind_groups: SlotMap<LightingBindGroupId, GpuBindGroup>,
@@ -34,9 +35,9 @@ impl<'a> Renderer<'a> {
         gpu: GpuContext,
         surface: wgpu::Surface<'a>,
         surface_config: wgpu::SurfaceConfiguration,
+        assets: AssetStore
     ) -> Self {
-        let depth_texture =
-            GpuTexture::create_depth_texture(&gpu, "depth_texture", &surface_config);
+        let depth_texture = GpuTexture::create_depth_texture(&gpu, "depth_texture", &surface_config);
         let instance_buffer = InstanceBuffer::new(gpu.clone(), "instance_buffer".into());
         Self {
             gpu,
@@ -45,6 +46,7 @@ impl<'a> Renderer<'a> {
             surface_is_configured: false,
             depth_texture,
             instance_buffer,
+            assets,
             pipelines: SlotMap::with_key(),
             global_bind_groups: SlotMap::with_key(),
             lighting_bind_groups: SlotMap::with_key(),
@@ -109,13 +111,13 @@ impl<'a> Renderer<'a> {
     /// Render the given scene only for the frame.
     ///
     /// If any command fails, rendering stops there and this returns a `RenderError`.
-    pub fn render_scene_for_frame(&mut self, scene: &mut Scene, assets: &AssetStore) -> Result<(), RenderError> {
+    pub fn render_scene_for_frame(&mut self, scene: &Scene) -> Result<(), RenderError> {
         if !self.surface_is_configured {
             return Err(RenderError::UnconfiguredSurface);
         }
 
         // get the render commands
-        let commands = scene.to_commands(assets, &mut self.instance_buffer)?;
+        let commands = scene.to_commands(&self.assets, &mut self.instance_buffer)?;
 
         // get the surface, encoder, render pass
         let output = self.surface.get_current_texture()?;
@@ -166,7 +168,7 @@ impl<'a> Renderer<'a> {
                     self.write_basic_command(&command, &mut render_pass, i)?
                 }
                 RenderCommand::Mesh(command) => {
-                    self.write_mesh_command( &command, &mut render_pass, i)?
+                    self.write_mesh_command(&command, &mut render_pass, i)?
                 }
             }
         }
@@ -181,7 +183,7 @@ impl<'a> Renderer<'a> {
 
     /// Write the render calls a raw render command.
     fn write_raw_command(
-        &mut self,
+        &self,
         command: &RawRenderCommand<'_>,
         render_pass: &mut wgpu::RenderPass<'_>,
         index: usize,
@@ -213,7 +215,7 @@ impl<'a> Renderer<'a> {
 
     /// Write the render calls for a basic render command.
     fn write_basic_command(
-        &mut self,
+        &self,
         command: &BasicRenderCommand<'_>,
         render_pass: &mut wgpu::RenderPass<'_>,
         index: usize,

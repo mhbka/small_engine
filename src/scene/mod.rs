@@ -52,7 +52,7 @@ impl Scene {
     /// Writes the scene's meshes' instance data into the `instance_buffer`,
     /// passing their ranges into the render command. 
     pub fn to_commands<'a>(
-        &'a mut self, 
+        &'a self, 
         assets: &'a AssetStore,
         instance_buffer: &mut InstanceBuffer
     ) -> Result<Vec<RenderCommand<'a>>, SceneError> {
@@ -101,6 +101,27 @@ impl Scene {
         for light in &self.lights {
             light.update_uniform_buffer(gpu);
         }
+    }
+
+    /// Add the nodes to the scene, returning their IDs.
+    pub fn add_nodes(&mut self, nodes: Vec<SceneNode>) -> Vec<SceneNodeId> {
+        nodes
+            .into_iter()
+            .map(|node| self.scene_nodes.insert(node))
+            .collect()
+    }
+
+    /// Add the mesh instances under that mesh, returning their IDs.
+    pub fn add_mesh_instances(&mut self, mesh: MeshId, instances: Vec<MeshInstance>) -> Vec<MeshInstanceId> {
+        let mut instance_ids = instances
+            .into_iter()
+            .map(|inst| self.mesh_instances.insert(inst))
+            .collect();
+        match self.instances_by_mesh.get_mut(mesh) {
+            Some(cur_instances) => cur_instances.append(&mut instance_ids),
+            None => self.instances_by_mesh.insert(mesh, instance_ids.clone()).map_or((), |_| ())
+        }
+        instance_ids
     }
 
     /// Get the camera.

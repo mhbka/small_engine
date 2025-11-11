@@ -57,6 +57,7 @@ pub async fn load_texture(file_name: &str, gpu: &GpuContext) -> anyhow::Result<G
     GpuTexture::from_bytes(gpu, &data, file_name)
 }
 
+/// Loads a model from the given file into the asset store.
 pub async fn load_model(file_name: &str, gpu: &GpuContext, assets: &mut AssetStore) -> anyhow::Result<Model> {
     let obj_text = load_string(file_name).await?;
     let obj_cursor = Cursor::new(obj_text);
@@ -90,7 +91,7 @@ pub async fn load_model(file_name: &str, gpu: &GpuContext, assets: &mut AssetSto
         })
     }
 
-    let mut material_ids = assets.add_materials(materials);
+    let material_ids = assets.add_materials(materials);
 
     let meshes = models
         .into_iter()

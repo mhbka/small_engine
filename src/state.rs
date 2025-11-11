@@ -27,10 +27,12 @@ use crate::gpu::texture::GpuTexture;
 use crate::lighting::{Lighting, create_lighting_bind_group};
 use crate::render::assets::AssetStore;
 use crate::render::model::ModelVertex;
+use crate::render::model::instance::MeshInstance;
 use crate::render::renderer::Renderer;
 use crate::scene::Scene;
 use crate::resources;
 use crate::scene::instance_buffer::MeshInstanceData;
+use crate::scene::node::generate_example_nodes;
 
 // This will store the state of our game
 pub struct State<'a> {
@@ -148,21 +150,38 @@ impl<'a> State<'a> {
         // object
         let obj_model = resources::load_model("cube.obj", &gpu, &mut assets).await.unwrap();
 
+        // scene nodes
+        let nodes = generate_example_nodes();
+
         // renderer
-        let mut renderer = Renderer::new(gpu.clone(), surface, config);
+        let mut renderer = Renderer::new(gpu.clone(), surface, config, assets);
         let pipeline_id = renderer.add_pipelines(vec![pipeline])[0];
         let camera_bind_group_id = renderer.add_global_bind_groups(vec![camera_bind_group])[0];
         let lighting_bind_group_id =
             renderer.add_lighting_bind_groups(vec![lighting_bind_group])[0];
 
         // scene
-        let scene = Scene::new(
+        let mut scene = Scene::new(
             camera,
             vec![lighting],
             pipeline_id,
             camera_bind_group_id,
             lighting_bind_group_id,
         );
+
+        // scene nodes + mesh instances
+        let node_ids = scene.add_nodes(nodes);
+        let mesh_instances = obj_model.meshes
+            .iter()
+            .map(|&mesh| {
+                let instances = node_ids
+                    .iter()
+                    .map(|&node| MeshInstance { mesh, node })
+                    .collect::<Vec<_>>();
+                let instance_ids = scene.add_mesh_instances(mesh, instances);
+                (mesh, instance_ids)
+            })
+            .collect::<Vec<_>>();
 
         Ok(Self {
             window,
@@ -180,16 +199,6 @@ impl<'a> State<'a> {
 
         self.scene.camera().update();
 
-        for model in self.scene.models() {
-            for mesh in &mut model.meshes {
-                for instance in mesh.instances.actual() {
-                    instance.update(|instance| {
-                        // what to do?
-                    });
-                }
-            }
-        }
-
         for light in self.scene.lights() {
             light.update(|uniform| {
                 let old_position: cgmath::Vector3<_> = uniform.position.into();
@@ -200,7 +209,7 @@ impl<'a> State<'a> {
             });
         }
 
-        self.scene.update_buffers(&self.gpu);
+        self.scene.write_buffers(&self.gpu);
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
