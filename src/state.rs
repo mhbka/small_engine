@@ -14,18 +14,18 @@ use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-use crate::camera::Camera;
-use crate::camera::create_camera_bind_group;
 use crate::gpu::GpuContext;
 use crate::gpu::pipeline::GpuPipeline;
 use crate::gpu::texture::GpuTexture;
 use crate::lighting::{Lighting, create_lighting_bind_group};
 use crate::render::assets::AssetStore;
-use crate::render::model::ModelVertex;
-use crate::render::model::instance::MeshInstance;
+use crate::render::renderable::model::ModelVertex;
+use crate::render::renderable::model::instance::MeshInstance;
 use crate::render::renderer::Renderer;
 use crate::resources;
 use crate::scene::Scene;
+use crate::scene::camera::{Camera, create_camera_bind_group};
+use crate::scene::camera::perspective::PerspectiveCamera;
 use crate::scene::instance_buffer::MeshInstanceData;
 use crate::scene::node::generate_example_nodes;
 
@@ -105,7 +105,8 @@ impl<'a> State<'a> {
         let device = gpu.device();
 
         // camera
-        let camera = Camera::new(&gpu, &config);
+        let perspective_camera = PerspectiveCamera::new(&gpu, &config);
+        let camera = Camera::Perspective(perspective_camera);
         let camera_bind_group = create_camera_bind_group(&gpu, camera.buffer());
 
         // shader

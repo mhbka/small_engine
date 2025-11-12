@@ -6,8 +6,7 @@ use crate::{
     gpu::{GpuContext, bind_group::GpuBindGroup, pipeline::GpuPipeline, texture::GpuTexture},
     render::{
         assets::{AssetStore, MeshId},
-        commands::{
-            BasicRenderCommand, DrawCommand, MeshRenderCommand, RawRenderCommand, RenderCommand,
+        commands::{DrawCommand, MeshRenderCommand, RenderCommand,
         },
     },
     scene::{Scene, SceneError, instance_buffer::InstanceBuffer},
@@ -172,12 +171,6 @@ impl<'a> Renderer<'a> {
         // write the render commands
         for (i, command) in commands.iter().enumerate() {
             match command {
-                RenderCommand::Raw(command) => {
-                    self.write_raw_command(&command, &mut render_pass, i)?
-                }
-                RenderCommand::Basic(command) => {
-                    self.write_basic_command(&command, &mut render_pass, i)?
-                }
                 RenderCommand::Mesh(command) => {
                     self.write_mesh_command(&command, &mut render_pass, i)?
                 }
@@ -191,86 +184,6 @@ impl<'a> Renderer<'a> {
 
         // clear the instance buffer
         self.instance_buffer.clear();
-
-        Ok(())
-    }
-
-    /// Write the render calls a raw render command.
-    fn write_raw_command(
-        &self,
-        command: &RawRenderCommand<'_>,
-        render_pass: &mut wgpu::RenderPass<'_>,
-        index: usize,
-    ) -> Result<(), RenderError> {
-        let pipeline = self
-            .pipelines
-            .get(command.pipeline)
-            .ok_or(RenderError::PipelineNotFound { index })?
-            .handle();
-        render_pass.set_pipeline(pipeline);
-
-        for group_command in &command.bind_group_commands {
-            render_pass.set_bind_group(
-                group_command.slot,
-                group_command.group.handle(),
-                &group_command.offsets,
-            );
-        }
-        for buffer_command in &command.vertex_buffers {
-            render_pass.set_vertex_buffer(buffer_command.slot, buffer_command.buffer);
-        }
-        if let Some((buffer, format)) = command.index_buffer {
-            render_pass.set_index_buffer(buffer, format);
-        }
-        self.draw(command.draw.clone(), render_pass);
-
-        Ok(())
-    }
-
-    /// Write the render calls for a basic render command.
-    fn write_basic_command(
-        &self,
-        command: &BasicRenderCommand<'_>,
-        render_pass: &mut wgpu::RenderPass<'_>,
-        index: usize,
-    ) -> Result<(), RenderError> {
-        let pipeline = self
-            .get_pipeline(command.pipeline)
-            .ok_or(RenderError::PipelineNotFound { index })?
-            .handle();
-        render_pass.set_pipeline(pipeline);
-
-        // get and set the bind groups
-        let global_bind_group = self
-            .get_global_bind_group(command.global_bind_group)
-            .ok_or(RenderError::GlobalBindGroupNotFound { index })?
-            .handle();
-        let lighting_bind_group = self
-            .get_lighting_bind_group(command.lighting_bind_group)
-            .ok_or(RenderError::LightingBindGroupNotFound { index })?
-            .handle();
-        render_pass.set_bind_group(GLOBAL_BIND_GROUP_SLOT, global_bind_group, &[]);
-        render_pass.set_bind_group(LIGHTING_BIND_GROUP_SLOT, lighting_bind_group, &[]);
-        render_pass.set_bind_group(
-            OBJECT_BIND_GROUP_SLOT,
-            command.object_bind_group.handle(),
-            &[],
-        );
-
-        // extra bind groups are slots 3 and above
-        for (i, group) in command.extra_bind_groups.iter().enumerate() {
-            let i = i + 3;
-            render_pass.set_bind_group(i as u32, group.handle(), &[]);
-        }
-
-        // rest is standard
-        for buffer_command in &command.vertex_buffers {
-            render_pass.set_vertex_buffer(buffer_command.slot, buffer_command.buffer);
-        }
-        if let Some((buffer, format)) = command.index_buffer {
-            render_pass.set_index_buffer(buffer, format);
-        }
-        self.draw(command.draw.clone(), render_pass);
 
         Ok(())
     }

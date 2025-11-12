@@ -10,18 +10,20 @@ use crate::{
     scene::instance_buffer::InstanceBufferRange,
 };
 
-/// Represents something that can be rendered.
+/// A model, essentially a collection of materials (textures) and meshes (vertices).
 pub struct Model {
     pub meshes: Vec<MeshId>,
     pub materials: Vec<MaterialId>,
 }
 
+/// A material.
 pub struct Material {
     pub name: String,
     pub diffuse_texture: GpuTexture,
     pub bind_group: GpuBindGroup,
 }
 
+/// A mesh; the actual thing rendered.
 pub struct Mesh {
     pub name: String,
     pub vertex_buffer: GpuBuffer,
@@ -31,7 +33,7 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    /// Create a render command for rendering this mesh.
+    /// Create a command for rendering this mesh.
     pub fn to_render_command<'buf>(
         &'buf self,
         id: MeshId,
@@ -62,6 +64,7 @@ impl Mesh {
     }
 }
 
+/// The data provided for each vertex for a model/mesh.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ModelVertex {
@@ -71,6 +74,7 @@ pub struct ModelVertex {
 }
 
 impl ModelVertex {
+    /// Get the vertex buffer layout.
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: size_of::<ModelVertex>() as u64,

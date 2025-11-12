@@ -1,6 +1,6 @@
 use slotmap::{SlotMap, new_key_type};
 
-use crate::render::model::{Material, Mesh};
+use crate::render::renderable::model::{Material, Mesh};
 
 new_key_type! {
     pub struct MeshId;

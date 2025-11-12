@@ -2,7 +2,6 @@ use crate::app::App;
 use winit::event_loop::EventLoop;
 
 pub mod app;
-pub mod camera;
 pub mod constants;
 pub mod gpu;
 pub mod handler;

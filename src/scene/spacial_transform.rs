@@ -1,15 +1,16 @@
 use bytemuck::{Pod, Zeroable};
-use cgmath::{Matrix, Matrix3, Matrix4, Quaternion, SquareMatrix, Vector3, Zero};
+use cgmath::{ElementWise, Matrix, Matrix3, Matrix4, Quaternion, SquareMatrix, Vector3, Zero};
 use wgpu::{VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode};
 
 /// Represents the spacial data for anything.
-pub struct SpacialTransform {
+#[derive(Clone, Copy)]
+pub struct SpatialTransform {
     pub scale: Vector3<f32>,
     pub position: Vector3<f32>,
     pub rotation: Quaternion<f32>,
 }
 
-impl SpacialTransform {
+impl SpatialTransform {
     /// Get the identity transform (ie doesn't do anything).
     pub fn identity() -> Self {
         Self {
@@ -20,9 +21,9 @@ impl SpacialTransform {
     }
 
     /// Get the uniform data for this transform.
-    pub fn to_raw(&self) -> RawSpacialTransform {
+    pub fn to_raw(&self) -> RawSpatialTransform {
         let matrices = self.to_matrices();
-        RawSpacialTransform {
+        RawSpatialTransform {
             model: matrices.0.into(),
             normal: matrices.1.into(),
         }
@@ -43,13 +44,29 @@ impl SpacialTransform {
         )
     }
 
-    /// Combine this transform with another, outputting the raw transform.
-    ///
-    /// (Assuming this is the global transform) used to combine with local transform for the instance's overall transform.
-    pub fn combine(&self, b: &SpacialTransform) -> RawSpacialTransform {
+    /// Combines this transform with a child transform.
+    /// Returns the resulting overall transform of the child.
+    pub fn combine(&self, child: &SpatialTransform) -> SpatialTransform {
+        let scaled_position = self.scale.mul_element_wise(child.position);
+        let combined_scale = self.scale.mul_element_wise(child.scale);
+  
+        let rotated_position = self.rotation * scaled_position;
+        let final_position = self.position + rotated_position;
+        let combined_rotation = self.rotation * child.rotation;
+        
+        SpatialTransform {
+            scale: combined_scale,
+            position: final_position,
+            rotation: combined_rotation,
+        }
+    }
+
+    /// Combine this transform with a child transform.
+    /// Returns the resulting raw overall transform of the child.
+    pub fn combine_raw(&self, b: &SpatialTransform) -> RawSpatialTransform {
         let (self_model, self_norm) = self.to_matrices();
         let (b_model, b_norm) = b.to_matrices();
-        RawSpacialTransform {
+        RawSpatialTransform {
             model: (self_model * b_model).into(),
             normal: (self_norm * b_norm).into(),
         }
@@ -59,16 +76,16 @@ impl SpacialTransform {
 /// The raw data for a spacial transform, to be directly used in the shader.
 #[repr(C)]
 #[derive(Copy, Clone, Pod, Zeroable)]
-pub struct RawSpacialTransform {
+pub struct RawSpatialTransform {
     model: [[f32; 4]; 4],
     normal: [[f32; 3]; 3],
 }
 
-impl RawSpacialTransform {
+impl RawSpatialTransform {
     /// Get the vertex buffer description of this transform.
     pub fn desc() -> VertexBufferLayout<'static> {
         VertexBufferLayout {
-            array_stride: size_of::<RawSpacialTransform>() as wgpu::BufferAddress,
+            array_stride: size_of::<RawSpatialTransform>() as wgpu::BufferAddress,
             step_mode: VertexStepMode::Instance,
             attributes: &[
                 // Note that we start at location 5 to reserve 2-4 for other vertex stuff.

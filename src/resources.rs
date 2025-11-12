@@ -2,7 +2,7 @@ use crate::{
     gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer, texture::GpuTexture},
     render::{
         assets::AssetStore,
-        model::{self, Material, Model},
+        renderable::model::{self, Material, Model},
     },
 };
 use std::io::{BufReader, Cursor};

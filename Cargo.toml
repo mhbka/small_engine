@@ -19,6 +19,7 @@ web-time = "1.1.0"
 tobj = { version = "3.2", default-features = false, features = ["async"]}
 slotmap = "1.0.7"
 thiserror = "2.0.17"
+kira = "0.11.0"
 
 [dependencies.image]
 version = "0.24"
