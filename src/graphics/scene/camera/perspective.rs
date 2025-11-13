@@ -1,7 +1,10 @@
-use crate::graphics::{gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer}, scene::camera::{OPENGL_TO_WGPU_MATRIX, create_camera_bind_group}};
+use crate::graphics::scene::camera::CameraUniform;
+use crate::graphics::{
+    gpu::{GpuContext, buffer::GpuBuffer},
+    scene::camera::OPENGL_TO_WGPU_MATRIX,
+};
 use cgmath::{Deg, Matrix4, Point3, Vector3, perspective};
 use wgpu::SurfaceConfiguration;
-use crate::graphics::scene::camera::CameraUniform;
 use winit::keyboard::KeyCode;
 
 /// A perspective camera, ie one with depth scaling. Used for 3D scenes usually.
@@ -26,8 +29,11 @@ impl PerspectiveCamera {
         );
         let mut uniform = CameraUniform::new();
         uniform.update_perspective(&data);
-        let buffer =
-            GpuBuffer::create_uniform("perspective_camera_buffer", gpu, bytemuck::cast_slice(&[uniform]));
+        let buffer = GpuBuffer::create_uniform(
+            "perspective_camera_buffer",
+            gpu,
+            bytemuck::cast_slice(&[uniform]),
+        );
         let controller = PerspectiveCameraController::new(0.2);
 
         Self {
@@ -64,7 +70,9 @@ impl PerspectiveCamera {
     }
 
     /// Get the camera data mutably.
-    pub fn data_mut(&mut self) -> &mut PerspectiveCameraData { &mut self.data }
+    pub fn data_mut(&mut self) -> &mut PerspectiveCameraData {
+        &mut self.data
+    }
 }
 
 /// Data for the camera.

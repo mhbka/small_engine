@@ -49,11 +49,11 @@ impl SpatialTransform {
     pub fn combine(&self, child: &SpatialTransform) -> SpatialTransform {
         let scaled_position = self.scale.mul_element_wise(child.position);
         let combined_scale = self.scale.mul_element_wise(child.scale);
-  
+
         let rotated_position = self.rotation * scaled_position;
         let final_position = self.position + rotated_position;
         let combined_rotation = self.rotation * child.rotation;
-        
+
         SpatialTransform {
             scale: combined_scale,
             position: final_position,

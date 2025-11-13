@@ -1,7 +1,7 @@
+use crate::graphics::scene::spatial_transform::{RawSpatialTransform, SpatialTransform};
 use cgmath::Zero;
 use cgmath::{InnerSpace, Rotation3, Vector3};
 use slotmap::new_key_type;
-use crate::graphics::scene::spacial_transform::{RawSpatialTransform, SpatialTransform};
 
 new_key_type! {
     /// Used to reference a `SceneNode`.
@@ -9,14 +9,14 @@ new_key_type! {
 }
 
 /// A node in the scene graph.
-/// 
+///
 /// Mostly just contains spatial information.
 pub struct SceneNode {
     parent: Option<SceneNodeId>,
     children: Vec<SceneNodeId>,
     global_transform: SpatialTransform,
     local_transform: SpatialTransform,
-    propagated_global_to_children: bool
+    propagated_global_to_children: bool,
 }
 
 impl SceneNode {
@@ -32,7 +32,7 @@ impl SceneNode {
             children,
             local_transform,
             global_transform,
-            propagated_global_to_children: true
+            propagated_global_to_children: true,
         }
     }
 
@@ -46,28 +46,40 @@ impl SceneNode {
         self.global_transform.combine(&self.local_transform)
     }
 
-    /// Get the parent of the node. 
-    pub fn parent(&self) -> &Option<SceneNodeId> { &self.parent }
+    /// Get the parent of the node.
+    pub fn parent(&self) -> &Option<SceneNodeId> {
+        &self.parent
+    }
 
     /// Get the children.
-    pub fn children(&self) -> &Vec<SceneNodeId> { &self.children }
+    pub fn children(&self) -> &Vec<SceneNodeId> {
+        &self.children
+    }
 
     /// Get the local transform.
-    pub fn local_transform(&self) -> SpatialTransform { self.local_transform }
+    pub fn local_transform(&self) -> SpatialTransform {
+        self.local_transform
+    }
 
     /// Returns `true` if the node's transform has been propagated to its children.
-    pub fn propagated_global_to_children(&self) -> bool { self.propagated_global_to_children } 
+    pub fn propagated_global_to_children(&self) -> bool {
+        self.propagated_global_to_children
+    }
 
     /// Update the node's local transform.
     pub fn update_local_transform<F>(&mut self, mut update: F)
-    where F: FnMut(&mut SpatialTransform) {
+    where
+        F: FnMut(&mut SpatialTransform),
+    {
         update(&mut self.local_transform);
         self.propagated_global_to_children = false;
     }
 
     /// Update the node's global transform.
     pub fn update_global_transform<F>(&mut self, mut update: F)
-    where F: FnMut(&mut SpatialTransform) {
+    where
+        F: FnMut(&mut SpatialTransform),
+    {
         update(&mut self.global_transform);
         self.propagated_global_to_children = false;
     }
@@ -76,9 +88,11 @@ impl SceneNode {
     pub(super) fn set_parent(&mut self, parent: SceneNodeId) {
         self.parent = Some(parent)
     }
-    
+
     /// Set propagated value. Only for the graph to use.
-    pub(super) fn set_propagated(&mut self, val: bool) { self.propagated_global_to_children = val; }
+    pub(super) fn set_propagated(&mut self, val: bool) {
+        self.propagated_global_to_children = val;
+    }
 }
 
 /// Just generate some spaced nodes as an example.

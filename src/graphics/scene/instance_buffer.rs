@@ -3,7 +3,7 @@ use wgpu::BufferSlice;
 
 use crate::graphics::gpu::{GpuContext, buffer::GpuBuffer};
 use crate::graphics::scene::MeshId;
-use crate::graphics::scene::spacial_transform::RawSpatialTransform;
+use crate::graphics::scene::spatial_transform::RawSpatialTransform;
 
 /// The data per instance. Currently just the spacial transform for it.
 pub type MeshInstanceData = RawSpatialTransform;
@@ -86,11 +86,13 @@ impl InstanceBuffer {
     ///
     /// You should do this once all your instance data has been written,
     /// and you're ready to render.
-    /// 
+    ///
     /// ## Panic
     /// Panics if the buffer data is somehow larger than the buffer size.
     pub fn write(&self) {
-        if self.buffer.handle().size() < (self.buffer_data.len() * size_of::<MeshInstanceData>()) as u64 {
+        if self.buffer.handle().size()
+            < (self.buffer_data.len() * size_of::<MeshInstanceData>()) as u64
+        {
             panic!("Instance buffer data is larger than buffer's capacity!");
         }
 

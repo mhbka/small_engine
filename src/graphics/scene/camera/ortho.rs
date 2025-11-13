@@ -1,11 +1,13 @@
-use wgpu::SurfaceConfiguration;
-use cgmath::{Deg, Matrix4, Quaternion, Rad, Rotation3, SquareMatrix, Vector3, ortho};
-use crate::graphics::{gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer}, scene::camera::{CameraUniform, create_camera_bind_group}};
 use crate::graphics::scene::camera::OPENGL_TO_WGPU_MATRIX;
+use crate::graphics::{
+    gpu::{GpuContext, buffer::GpuBuffer},
+    scene::camera::CameraUniform,
+};
+use cgmath::{Deg, Matrix4, Quaternion, Rotation3, Vector3, ortho};
 
 /// An orthographic camera, ie one without depth scaling.
-/// Usually for 2D scenes but also for certain situations in 3D. 
-/// 
+/// Usually for 2D scenes but also for certain situations in 3D.
+///
 /// For 2D scenes, you can set the yaw/pitch to 0.
 pub struct OrthographicCamera {
     data: OrthoCameraData,
@@ -16,7 +18,7 @@ pub struct OrthographicCamera {
 impl OrthographicCamera {
     /// Create the orthographic camera.
     pub fn new(
-        gpu: &GpuContext, 
+        gpu: &GpuContext,
         origin_at_top_left: bool,
         invert_y: bool,
         position: Vector3<f32>,
@@ -26,7 +28,7 @@ impl OrthographicCamera {
         pitch: f32,
         zoom: f32,
         near: f32,
-        far: f32
+        far: f32,
     ) -> Self {
         let data = {
             OrthoCameraData::new(
@@ -39,7 +41,7 @@ impl OrthographicCamera {
                 pitch,
                 zoom,
                 near,
-                far
+                far,
             )
         };
         let mut uniform = CameraUniform::new();
@@ -63,10 +65,14 @@ impl OrthographicCamera {
     }
 
     /// Get the buffer.
-    pub fn buffer(&self) -> &GpuBuffer { &self.buffer }
+    pub fn buffer(&self) -> &GpuBuffer {
+        &self.buffer
+    }
 
     /// Get the camera data mutably.
-    pub fn data_mut(&mut self) -> &mut OrthoCameraData { &mut self.data }
+    pub fn data_mut(&mut self) -> &mut OrthoCameraData {
+        &mut self.data
+    }
 }
 
 /// Data for the camera.
@@ -80,7 +86,7 @@ pub struct OrthoCameraData {
     pub pitch: f32,
     pub zoom: f32,
     pub near: f32,
-    pub far: f32
+    pub far: f32,
 }
 
 impl OrthoCameraData {
@@ -94,7 +100,7 @@ impl OrthoCameraData {
         pitch: f32,
         zoom: f32,
         near: f32,
-        far: f32
+        far: f32,
     ) -> Self {
         Self {
             origin_at_top_left,
@@ -106,12 +112,14 @@ impl OrthoCameraData {
             pitch,
             zoom,
             near,
-            far
+            far,
         }
     }
 
     pub fn build_view_matrix(&self) -> Matrix4<f32> {
-        let rotation: Matrix4<f32> = (Quaternion::from_angle_y(Deg(self.yaw)) * Quaternion::from_angle_x(Deg(self.pitch))).into();
+        let rotation: Matrix4<f32> = (Quaternion::from_angle_y(Deg(self.yaw))
+            * Quaternion::from_angle_x(Deg(self.pitch)))
+        .into();
         let translation = Matrix4::from_translation(-self.position);
         rotation * translation
     }
@@ -125,9 +133,17 @@ impl OrthoCameraData {
             (-self.width / 2.0, self.width / 2.0)
         };
         let (mut bottom, mut top) = if self.origin_at_top_left {
-            if self.invert_y { (0.0, self.height) } else { (self.height, 0.0) }
+            if self.invert_y {
+                (0.0, self.height)
+            } else {
+                (self.height, 0.0)
+            }
         } else {
-            if self.invert_y { (-self.height / 2.0, self.height / 2.0) } else { (self.height / 2.0, -self.height / 2.0) }
+            if self.invert_y {
+                (-self.height / 2.0, self.height / 2.0)
+            } else {
+                (self.height / 2.0, -self.height / 2.0)
+            }
         };
 
         left = left / self.zoom;

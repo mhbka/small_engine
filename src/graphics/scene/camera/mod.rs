@@ -2,7 +2,13 @@ use bytemuck::NoUninit;
 use cgmath::{Matrix4, SquareMatrix};
 use wgpu::{BindGroupEntry, BindGroupLayoutEntry, BindingType, BufferBindingType, ShaderStages};
 
-use crate::graphics::{gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer}, scene::camera::{ortho::{OrthoCameraData, OrthographicCamera}, perspective::{PerspectiveCamera, PerspectiveCameraData}}};
+use crate::graphics::{
+    gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer},
+    scene::camera::{
+        ortho::{OrthoCameraData, OrthographicCamera},
+        perspective::{PerspectiveCamera, PerspectiveCameraData},
+    },
+};
 
 pub mod ortho;
 pub mod perspective;
@@ -18,7 +24,7 @@ pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::from_cols(
 /// A camera for a scene.
 pub enum Camera {
     Perspective(PerspectiveCamera),
-    Ortho(OrthographicCamera)
+    Ortho(OrthographicCamera),
 }
 
 impl Camera {
@@ -26,7 +32,7 @@ impl Camera {
     pub fn write_uniform_buffer(&self, gpu: &GpuContext) {
         match self {
             Self::Perspective(camera) => camera.write_uniform_buffer(gpu),
-            Self::Ortho(camera) => camera.write_uniform_buffer(gpu)
+            Self::Ortho(camera) => camera.write_uniform_buffer(gpu),
         }
     }
 
@@ -34,7 +40,7 @@ impl Camera {
     pub fn buffer(&self) -> &GpuBuffer {
         match self {
             Self::Perspective(c) => c.buffer(),
-            Self::Ortho(c) => c.buffer()
+            Self::Ortho(c) => c.buffer(),
         }
     }
 }
@@ -86,9 +92,9 @@ pub fn create_camera_bind_group(gpu: &GpuContext, camera_buffer: &GpuBuffer) -> 
         resource: camera_buffer.handle().as_entire_binding(),
     }];
     GpuBindGroup::create_default(
-        "perspective_camera_bind_group", 
-        gpu, 
-        &layout_entries, 
-        &entries
+        "perspective_camera_bind_group",
+        gpu,
+        &layout_entries,
+        &entries,
     )
 }

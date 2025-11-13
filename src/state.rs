@@ -17,17 +17,17 @@ use wasm_bindgen::prelude::*;
 use crate::graphics::gpu::GpuContext;
 use crate::graphics::gpu::pipeline::GpuPipeline;
 use crate::graphics::gpu::texture::GpuTexture;
-use crate::graphics::scene::lighting::{Lighting, create_lighting_bind_group};
 use crate::graphics::render::assets::AssetStore;
-use crate::graphics::render::renderable::model::ModelVertex;
 use crate::graphics::render::renderable::model::MeshInstance;
+use crate::graphics::render::renderable::model::ModelVertex;
 use crate::graphics::render::renderer::Renderer;
-use crate::resources;
 use crate::graphics::scene::Scene;
-use crate::graphics::scene::camera::{Camera, create_camera_bind_group};
 use crate::graphics::scene::camera::perspective::PerspectiveCamera;
+use crate::graphics::scene::camera::{Camera, create_camera_bind_group};
 use crate::graphics::scene::instance_buffer::MeshInstanceData;
+use crate::graphics::scene::lighting::{Lighting, create_lighting_bind_group};
 use crate::graphics::scene::node::generate_example_nodes;
+use crate::resources;
 
 // This will store the state of our game
 pub struct State<'a> {

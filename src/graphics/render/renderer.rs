@@ -6,8 +6,7 @@ use crate::graphics::{
     gpu::{GpuContext, bind_group::GpuBindGroup, pipeline::GpuPipeline, texture::GpuTexture},
     render::{
         assets::{AssetStore, MeshId},
-        commands::{DrawCommand, MeshRenderCommand, RenderCommand,
-        },
+        commands::{DrawCommand, MeshRenderCommand, RenderCommand},
     },
     scene::{Scene, SceneError, instance_buffer::InstanceBuffer},
 };

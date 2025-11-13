@@ -2,10 +2,10 @@ use crate::app::App;
 use winit::event_loop::EventLoop;
 
 pub mod app;
+pub mod graphics;
 pub mod handler;
 pub mod resources;
 pub mod state;
-pub mod graphics;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;

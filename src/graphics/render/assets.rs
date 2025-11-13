@@ -1,6 +1,9 @@
 use slotmap::{SlotMap, new_key_type};
 
-use crate::graphics::{gpu::texture::GpuTexture, render::renderable::model::{Material, Mesh}};
+use crate::graphics::{
+    gpu::texture::GpuTexture,
+    render::renderable::model::{Material, Mesh},
+};
 
 new_key_type! {
     pub struct MeshId;
@@ -11,7 +14,7 @@ new_key_type! {
 pub struct AssetStore {
     meshes: SlotMap<MeshId, Mesh>,
     materials: SlotMap<MaterialId, Material>,
-    sprite_textures: SlotMap<SpriteTextureId, GpuTexture>
+    sprite_textures: SlotMap<SpriteTextureId, GpuTexture>,
 }
 
 impl AssetStore {
@@ -20,7 +23,7 @@ impl AssetStore {
         Self {
             meshes: SlotMap::with_key(),
             materials: SlotMap::with_key(),
-            sprite_textures: SlotMap::with_key()
+            sprite_textures: SlotMap::with_key(),
         }
     }
 
@@ -39,7 +42,10 @@ impl AssetStore {
 
     /// Add meshes to the store.
     pub fn add_sprite_textures(&mut self, meshes: Vec<GpuTexture>) -> Vec<SpriteTextureId> {
-        meshes.into_iter().map(|s| self.sprite_textures.insert(s)).collect()
+        meshes
+            .into_iter()
+            .map(|s| self.sprite_textures.insert(s))
+            .collect()
     }
 
     /// Get a material.

@@ -1,8 +1,8 @@
+pub mod camera;
 pub mod instance_buffer;
+pub mod lighting;
 pub mod node;
 pub mod spatial_transform;
-pub mod camera;
-pub mod lighting;
 
 use std::collections::VecDeque;
 
@@ -18,7 +18,11 @@ use crate::graphics::{
         renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId},
     },
     scene::{
-        lighting::Lighting, camera::Camera, instance_buffer::InstanceBuffer, node::{SceneNode, SceneNodeId}, spatial_transform::{RawSpatialTransform, SpatialTransform}
+        camera::Camera,
+        instance_buffer::InstanceBuffer,
+        lighting::Lighting,
+        node::{SceneNode, SceneNodeId},
+        spatial_transform::{RawSpatialTransform, SpatialTransform},
     },
 };
 
@@ -53,14 +57,12 @@ impl Scene {
         lighting_bind_group: LightingBindGroupId,
     ) -> Self {
         let mut scene_nodes = SlotMap::with_key();
-        let root_scene_node = scene_nodes.insert(
-            SceneNode::new(
-                None, 
-                vec![], 
-                SpatialTransform::identity(), 
-                SpatialTransform::identity()
-            )
-        );
+        let root_scene_node = scene_nodes.insert(SceneNode::new(
+            None,
+            vec![],
+            SpatialTransform::identity(),
+            SpatialTransform::identity(),
+        ));
         Self {
             scene_nodes,
             mesh_instances: SlotMap::with_key(),
@@ -175,7 +177,7 @@ impl Scene {
     pub fn lights(&mut self) -> &mut Vec<Lighting> {
         &mut self.lights
     }
-    
+
     /// Walks the scene graph and propagates each node's transforms to its children's global transforms.
     fn update_graph(&mut self) {
         let mut node_queue = VecDeque::with_capacity(self.scene_nodes.len());
@@ -190,9 +192,7 @@ impl Scene {
                 let global = cur_node.transform();
                 for node in &children {
                     let node = self.scene_nodes.get_mut(*node).unwrap();
-                    node.update_global_transform(
-                        |old| *old = global
-                    );
+                    node.update_global_transform(|old| *old = global);
                     node.set_propagated(false);
                 }
             }
