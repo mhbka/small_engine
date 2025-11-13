@@ -1,4 +1,4 @@
-use crate::graphics::scene::node::SceneNodeId;
+use crate::core::world::WorldEntityId;
 use crate::graphics::{
     gpu::{bind_group::GpuBindGroup, buffer::GpuBuffer, texture::GpuTexture},
     render::{
@@ -12,12 +12,12 @@ use crate::graphics::{
 /// Represents an instance of a mesh.
 ///
 /// The instance points to the actual mesh it is an instance of,
-/// the scene node containing its spatial data,
+/// the entity containing its spatial data,
 /// and the material for it.
 #[derive(Clone)]
 pub struct MeshInstance {
     pub mesh: MeshId,
-    pub node: SceneNodeId,
+    pub entity: WorldEntityId,
 }
 
 /// A model, essentially a collection of materials (textures) and meshes (vertices).

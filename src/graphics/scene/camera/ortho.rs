@@ -56,7 +56,8 @@ impl OrthographicCamera {
     }
 
     /// Write the camera's uniform buffer to the GPU.
-    pub fn write_uniform_buffer(&self, gpu: &GpuContext) {
+    pub fn write_uniform_buffer(&mut self, gpu: &GpuContext) {
+        self.uniform.update_ortho(&self.data);
         gpu.queue().write_buffer(
             self.buffer.handle(),
             0,

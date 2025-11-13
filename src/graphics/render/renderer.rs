@@ -1,4 +1,4 @@
-use crate::graphics::{
+use crate::{core::world::World, graphics::{
     constants::{
         GLOBAL_BIND_GROUP_SLOT, INDEX_BUFFER_FORMAT, INSTANCE_BUFFER_SLOT,
         LIGHTING_BIND_GROUP_SLOT, OBJECT_BIND_GROUP_SLOT, VERTEX_BUFFER_SLOT,
@@ -9,7 +9,7 @@ use crate::graphics::{
         commands::{DrawCommand, MeshRenderCommand, RenderCommand},
     },
     scene::{Scene, SceneError, instance_buffer::InstanceBuffer},
-};
+}};
 use slotmap::{SlotMap, new_key_type};
 use thiserror::Error;
 
@@ -119,13 +119,13 @@ impl<'a> Renderer<'a> {
     /// Render the given scene only for the frame.
     ///
     /// If any command fails, rendering stops there and this returns a `RenderError`.
-    pub fn render_scene_for_frame(&mut self, scene: &Scene) -> Result<(), RenderError> {
+    pub fn render_scene_for_frame(&mut self, scene: &Scene, world: &World) -> Result<(), RenderError> {
         if !self.surface_is_configured {
             return Err(RenderError::UnconfiguredSurface);
         }
 
         // get the render commands
-        let commands = scene.to_commands(&self.assets, &mut self.instance_buffer)?;
+        let commands = scene.to_commands(&world, &self.assets, &mut self.instance_buffer)?;
         self.instance_buffer.write();
 
         // get the surface, encoder, render pass

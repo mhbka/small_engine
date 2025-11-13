@@ -28,8 +28,8 @@ pub enum Camera {
 }
 
 impl Camera {
-    /// Write the camera's uniform buffer to the GPU.
-    pub fn write_uniform_buffer(&self, gpu: &GpuContext) {
+    /// Write the camera's updated uniform buffer to the GPU.
+    pub fn write_uniform_buffer(&mut self, gpu: &GpuContext) {
         match self {
             Self::Perspective(camera) => camera.write_uniform_buffer(gpu),
             Self::Ortho(camera) => camera.write_uniform_buffer(gpu),

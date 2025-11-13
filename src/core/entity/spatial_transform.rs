@@ -1,6 +1,6 @@
-use bytemuck::{Pod, Zeroable};
 use cgmath::{ElementWise, Matrix, Matrix3, Matrix4, Quaternion, SquareMatrix, Vector3, Zero};
-use wgpu::{VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode};
+
+use crate::graphics::scene::raw_spatial_transform::RawSpatialTransform;
 
 /// Represents the spacial data for anything.
 #[derive(Clone, Copy)]
@@ -69,62 +69,6 @@ impl SpatialTransform {
         RawSpatialTransform {
             model: (self_model * b_model).into(),
             normal: (self_norm * b_norm).into(),
-        }
-    }
-}
-
-/// The raw data for a spacial transform, to be directly used in the shader.
-#[repr(C)]
-#[derive(Copy, Clone, Pod, Zeroable)]
-pub struct RawSpatialTransform {
-    model: [[f32; 4]; 4],
-    normal: [[f32; 3]; 3],
-}
-
-impl RawSpatialTransform {
-    /// Get the vertex buffer description of this transform.
-    pub fn desc() -> VertexBufferLayout<'static> {
-        VertexBufferLayout {
-            array_stride: size_of::<RawSpatialTransform>() as wgpu::BufferAddress,
-            step_mode: VertexStepMode::Instance,
-            attributes: &[
-                // Note that we start at location 5 to reserve 2-4 for other vertex stuff.
-                VertexAttribute {
-                    offset: 0,
-                    shader_location: 5,
-                    format: VertexFormat::Float32x4,
-                },
-                VertexAttribute {
-                    offset: size_of::<[f32; 4]>() as wgpu::BufferAddress,
-                    shader_location: 6,
-                    format: VertexFormat::Float32x4,
-                },
-                VertexAttribute {
-                    offset: size_of::<[f32; 8]>() as wgpu::BufferAddress,
-                    shader_location: 7,
-                    format: VertexFormat::Float32x4,
-                },
-                VertexAttribute {
-                    offset: size_of::<[f32; 12]>() as wgpu::BufferAddress,
-                    shader_location: 8,
-                    format: VertexFormat::Float32x4,
-                },
-                wgpu::VertexAttribute {
-                    offset: size_of::<[f32; 16]>() as wgpu::BufferAddress,
-                    shader_location: 9,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: size_of::<[f32; 19]>() as wgpu::BufferAddress,
-                    shader_location: 10,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: size_of::<[f32; 22]>() as wgpu::BufferAddress,
-                    shader_location: 11,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-            ],
         }
     }
 }

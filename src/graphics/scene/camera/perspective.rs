@@ -11,7 +11,6 @@ use winit::keyboard::KeyCode;
 pub struct PerspectiveCamera {
     data: PerspectiveCameraData,
     uniform: CameraUniform,
-    controller: PerspectiveCameraController,
     buffer: GpuBuffer,
 }
 
@@ -34,34 +33,22 @@ impl PerspectiveCamera {
             gpu,
             bytemuck::cast_slice(&[uniform]),
         );
-        let controller = PerspectiveCameraController::new(0.2);
 
         Self {
             data,
             uniform,
-            controller,
             buffer,
         }
     }
 
-    /// Update the camera's values based on its controller's state.
-    pub fn update(&mut self) {
-        self.controller.update_camera(&mut self.data);
+    /// Update and write the camera's uniform buffer to the GPU.
+    pub fn write_uniform_buffer(&mut self, gpu: &GpuContext) {
         self.uniform.update_perspective(&self.data);
-    }
-
-    /// Write the camera's uniform buffer to the GPU.
-    pub fn write_uniform_buffer(&self, gpu: &GpuContext) {
         gpu.queue().write_buffer(
             self.buffer().handle(),
             0,
             bytemuck::cast_slice(&[self.uniform]),
         );
-    }
-
-    /// Update the camera controller state based on the key input.
-    pub fn handle_key(&mut self, code: KeyCode, is_pressed: bool) -> bool {
-        self.controller.handle_key(code, is_pressed)
     }
 
     /// Get the buffer.

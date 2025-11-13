@@ -6,6 +6,10 @@ pub mod graphics;
 pub mod handler;
 pub mod resources;
 pub mod state;
+pub mod input;
+pub mod core;
+pub mod systems;
+pub mod example;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;

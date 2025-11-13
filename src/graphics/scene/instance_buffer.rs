@@ -3,7 +3,7 @@ use wgpu::BufferSlice;
 
 use crate::graphics::gpu::{GpuContext, buffer::GpuBuffer};
 use crate::graphics::scene::MeshId;
-use crate::graphics::scene::spatial_transform::RawSpatialTransform;
+use crate::graphics::scene::raw_spatial_transform::RawSpatialTransform;
 
 /// The data per instance. Currently just the spacial transform for it.
 pub type MeshInstanceData = RawSpatialTransform;

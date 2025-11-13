@@ -1,9 +1,9 @@
-use crate::graphics::{render::assets::SpriteTextureId, scene::node::SceneNodeId};
+use crate::{core::world::WorldEntityId, graphics::render::assets::SpriteTextureId};
 
 /// An instance of a sprite.
 pub struct SpriteInstance {
-    node: SceneNodeId,
     texture: SpriteTextureId,
+    entity: WorldEntityId
 }
 
 /// The data for a quad vertex.

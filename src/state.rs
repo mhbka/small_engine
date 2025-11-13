@@ -1,5 +1,4 @@
 use cgmath::Rotation3;
-use image::GenericImageView;
 use std::sync::Arc;
 use web_time::Instant;
 use wgpu::Backends;
@@ -14,6 +13,8 @@ use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
+use crate::core::world::World;
+use crate::example::generated_spaced_entities;
 use crate::graphics::gpu::GpuContext;
 use crate::graphics::gpu::pipeline::GpuPipeline;
 use crate::graphics::gpu::texture::GpuTexture;
@@ -26,13 +27,13 @@ use crate::graphics::scene::camera::perspective::PerspectiveCamera;
 use crate::graphics::scene::camera::{Camera, create_camera_bind_group};
 use crate::graphics::scene::instance_buffer::MeshInstanceData;
 use crate::graphics::scene::lighting::{Lighting, create_lighting_bind_group};
-use crate::graphics::scene::node::generate_example_nodes;
 use crate::resources;
 
 // This will store the state of our game
 pub struct State<'a> {
     pub window: Arc<Window>,
     gpu: GpuContext,
+    world: World, 
     renderer: Renderer<'a>,
     scene: Scene,
     last_frame_update: Instant,
@@ -65,8 +66,6 @@ impl<'a> State<'a> {
                 label: None,
                 required_features: Features::empty(),
                 experimental_features: ExperimentalFeatures::disabled(),
-                // WebGL doesn't support all of wgpu's features, so if
-                // we're building for the web we'll have to disable some.
                 required_limits: if cfg!(target_arch = "wasm32") {
                     Limits::downlevel_webgl2_defaults()
                 } else {
@@ -145,9 +144,12 @@ impl<'a> State<'a> {
         let obj_model = resources::load_model("cube.obj", &gpu, &mut assets)
             .await
             .unwrap();
+        
+        // world
+        let mut world = World::new();
 
         // scene nodes
-        let nodes = generate_example_nodes();
+        let entities = generated_spaced_entities(&mut world);
 
         // renderer
         let mut renderer = Renderer::new(gpu.clone(), surface, config, assets);
@@ -166,14 +168,13 @@ impl<'a> State<'a> {
         );
 
         // scene nodes + mesh instances
-        let node_ids = scene.add_nodes(nodes);
         let mesh_instances = obj_model
             .meshes
             .iter()
             .map(|&mesh| {
-                let instances = node_ids
+                let instances = entities
                     .iter()
-                    .map(|&node| MeshInstance { mesh, node })
+                    .map(|&entity| MeshInstance { mesh, entity })
                     .collect::<Vec<_>>();
                 let instance_ids = scene.add_mesh_instances(mesh, instances);
                 (mesh, instance_ids)
@@ -185,6 +186,7 @@ impl<'a> State<'a> {
             gpu,
             renderer,
             scene,
+            world,
             last_frame_update: Instant::now(),
         })
     }

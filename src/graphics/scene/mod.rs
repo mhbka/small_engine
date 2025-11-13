@@ -1,15 +1,14 @@
 pub mod camera;
 pub mod instance_buffer;
 pub mod lighting;
-pub mod node;
-pub mod spatial_transform;
+pub mod raw_spatial_transform;
 
 use std::collections::VecDeque;
 
 use slotmap::{SecondaryMap, SlotMap, new_key_type};
 use thiserror::Error;
 
-use crate::graphics::{
+use crate::{core::world::{World, WorldEntityId}, graphics::{
     gpu::GpuContext,
     render::{
         assets::{AssetStore, MaterialId, MeshId},
@@ -21,10 +20,9 @@ use crate::graphics::{
         camera::Camera,
         instance_buffer::InstanceBuffer,
         lighting::Lighting,
-        node::{SceneNode, SceneNodeId},
-        spatial_transform::{RawSpatialTransform, SpatialTransform},
+        raw_spatial_transform::RawSpatialTransform,
     },
-};
+}};
 
 new_key_type! {
     /// To refer to a mesh instance.
@@ -35,11 +33,9 @@ new_key_type! {
 
 /// The main representation of "something" in the game.
 pub struct Scene {
-    scene_nodes: SlotMap<SceneNodeId, SceneNode>,
     mesh_instances: SlotMap<MeshInstanceId, MeshInstance>,
     instances_by_mesh: SecondaryMap<MeshId, Vec<MeshInstanceId>>,
     sprite_instances: SlotMap<SpriteInstanceId, SpriteInstance>,
-    root_scene_node: SceneNodeId,
     camera: Camera,
     lights: Vec<Lighting>,
     pipeline: PipelineId,
@@ -56,19 +52,10 @@ impl Scene {
         global_bind_group: GlobalBindGroupId,
         lighting_bind_group: LightingBindGroupId,
     ) -> Self {
-        let mut scene_nodes = SlotMap::with_key();
-        let root_scene_node = scene_nodes.insert(SceneNode::new(
-            None,
-            vec![],
-            SpatialTransform::identity(),
-            SpatialTransform::identity(),
-        ));
         Self {
-            scene_nodes,
             mesh_instances: SlotMap::with_key(),
             instances_by_mesh: SecondaryMap::new(),
             sprite_instances: SlotMap::with_key(),
-            root_scene_node,
             camera,
             lights,
             pipeline,
@@ -83,6 +70,7 @@ impl Scene {
     /// passing their ranges into the render command.
     pub fn to_commands<'a>(
         &'a self,
+        world: &World,
         assets: &'a AssetStore,
         instance_buffer: &mut InstanceBuffer,
     ) -> Result<Vec<RenderCommand<'a>>, SceneError> {
@@ -102,12 +90,12 @@ impl Scene {
                         .mesh_instances
                         .get(inst_id)
                         .ok_or(SceneError::MeshInstanceNotFound(inst_id))?;
-                    let instance_node = self
-                        .scene_nodes
-                        .get(instance.node)
-                        .ok_or(SceneError::SceneNodeNotFound(instance.node))?;
-                    let transform = instance_node.transform_raw();
-                    Ok(transform)
+                    let entity = world
+                        .entity(instance.entity)
+                        .ok_or(SceneError::EntityNotFound(instance.entity))?;
+                    Ok(
+                        entity.transform_raw()
+                    )
                 })
                 .collect::<Result<_, SceneError>>()?;
             let instance_buffer_range = instance_buffer.add(instance_transforms, mesh_id);
@@ -128,24 +116,11 @@ impl Scene {
     /// Writes any stored "updateable" data to their buffers.
     ///
     /// Currently, this is for the camera and light uniforms.
-    pub fn write_buffers(&self, gpu: &GpuContext) {
+    pub fn write_buffers(&mut self, gpu: &GpuContext) {
         self.camera.write_uniform_buffer(gpu);
         for light in &self.lights {
             light.update_uniform_buffer(gpu);
         }
-    }
-
-    /// Add the nodes to the scene, returning their IDs.
-    pub fn add_nodes(&mut self, nodes: Vec<SceneNode>) -> Vec<SceneNodeId> {
-        nodes
-            .into_iter()
-            .map(|mut node| {
-                if node.parent().is_none() {
-                    node.set_parent(self.root_scene_node);
-                }
-                self.scene_nodes.insert(node)
-            })
-            .collect()
     }
 
     /// Add the mesh instances under that mesh, returning their IDs.
@@ -177,31 +152,6 @@ impl Scene {
     pub fn lights(&mut self) -> &mut Vec<Lighting> {
         &mut self.lights
     }
-
-    /// Walks the scene graph and propagates each node's transforms to its children's global transforms.
-    fn update_graph(&mut self) {
-        let mut node_queue = VecDeque::with_capacity(self.scene_nodes.len());
-        node_queue.push_front(self.root_scene_node);
-        while !node_queue.is_empty() {
-            let cur_node_id = node_queue.pop_back().unwrap();
-            let cur_node = self.scene_nodes.get_mut(cur_node_id).unwrap();
-            let children = cur_node.children().clone();
-
-            if !cur_node.propagated_global_to_children() {
-                cur_node.set_propagated(true);
-                let global = cur_node.transform();
-                for node in &children {
-                    let node = self.scene_nodes.get_mut(*node).unwrap();
-                    node.update_global_transform(|old| *old = global);
-                    node.set_propagated(false);
-                }
-            }
-
-            for child in children {
-                node_queue.push_front(child);
-            }
-        }
-    }
 }
 
 #[derive(Debug, Error)]
@@ -212,6 +162,6 @@ pub enum SceneError {
     MaterialNotFound(MaterialId),
     #[error("Couldn't find mesh instance for ID {0:?}")]
     MeshInstanceNotFound(MeshInstanceId),
-    #[error("Couldn't find scene node of ID {0:?}")]
-    SceneNodeNotFound(SceneNodeId),
+    #[error("Couldn't find the entity of ID {0:?}")]
+    EntityNotFound(WorldEntityId)
 }
