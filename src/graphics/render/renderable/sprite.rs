@@ -1,3 +1,11 @@
+use crate::graphics::{render::assets::SpriteTextureId, scene::node::SceneNodeId};
+
+/// An instance of a sprite.
+pub struct SpriteInstance {
+    node: SceneNodeId,
+    texture: SpriteTextureId
+}
+
 /// The data for a quad vertex.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -34,8 +42,8 @@ impl QuadVertex {
 
 /// A 1x1, origin-centred square with standard interpolated texture.
 /// 
-/// Any other rectangle quad can be transformed from this.
-pub(super) const QUAD: [QuadVertex; 4] = [
+/// Any other rectangular quad can be transformed from this.
+const QUAD: [QuadVertex; 4] = [
         QuadVertex { position: [-0.5, -0.5, 0.0], uv: [0.0, 1.0] }, 
         QuadVertex { position: [ 0.5, -0.5, 0.0], uv: [1.0, 1.0] }, 
         QuadVertex { position: [ 0.5,  0.5, 0.0], uv: [1.0, 0.0] }, 

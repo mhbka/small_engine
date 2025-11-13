@@ -1,7 +1,7 @@
-use crate::{gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer}, scene::camera::{OPENGL_TO_WGPU_MATRIX, create_camera_bind_group}};
+use crate::graphics::{gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer}, scene::camera::{OPENGL_TO_WGPU_MATRIX, create_camera_bind_group}};
 use cgmath::{Deg, Matrix4, Point3, Vector3, perspective};
 use wgpu::SurfaceConfiguration;
-use crate::scene::camera::CameraUniform;
+use crate::graphics::scene::camera::CameraUniform;
 use winit::keyboard::KeyCode;
 
 /// A perspective camera, ie one with depth scaling. Used for 3D scenes usually.
@@ -49,7 +49,7 @@ impl PerspectiveCamera {
         gpu.queue().write_buffer(
             self.buffer().handle(),
             0,
-            bytemuck::cast_slice(&[*self.uniform()]),
+            bytemuck::cast_slice(&[self.uniform]),
         );
     }
 
@@ -58,32 +58,24 @@ impl PerspectiveCamera {
         self.controller.handle_key(code, is_pressed)
     }
 
-    pub fn data(&self) -> &PerspectiveCameraData {
-        &self.data
-    }
-
-    pub fn uniform(&self) -> &CameraUniform {
-        &self.uniform
-    }
-
-    pub fn controller(&self) -> &PerspectiveCameraController {
-        &self.controller
-    }
-
+    /// Get the buffer.
     pub fn buffer(&self) -> &GpuBuffer {
         &self.buffer
     }
+
+    /// Get the camera data mutably.
+    pub fn data_mut(&mut self) -> &mut PerspectiveCameraData { &mut self.data }
 }
 
 /// Data for the camera.
 pub struct PerspectiveCameraData {
-    eye: Point3<f32>,
-    target: Point3<f32>,
-    up: Vector3<f32>,
-    aspect: f32,
-    fovy: f32,
-    znear: f32,
-    zfar: f32,
+    pub eye: Point3<f32>,
+    pub target: Point3<f32>,
+    pub up: Vector3<f32>,
+    pub aspect: f32,
+    pub fovy: f32,
+    pub znear: f32,
+    pub zfar: f32,
 }
 
 impl PerspectiveCameraData {
@@ -121,11 +113,11 @@ impl PerspectiveCameraData {
 
 /// The camera controller, used for mapping inputs to camera movement.
 pub struct PerspectiveCameraController {
-    speed: f32,
-    is_forward_pressed: bool,
-    is_backward_pressed: bool,
-    is_left_pressed: bool,
-    is_right_pressed: bool,
+    pub speed: f32,
+    pub is_forward_pressed: bool,
+    pub is_backward_pressed: bool,
+    pub is_left_pressed: bool,
+    pub is_right_pressed: bool,
 }
 
 impl PerspectiveCameraController {

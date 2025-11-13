@@ -1,6 +1,5 @@
-pub mod instance;
-
-use crate::{
+use crate::graphics::scene::node::SceneNodeId;
+use crate::graphics::{
     gpu::{bind_group::GpuBindGroup, buffer::GpuBuffer, texture::GpuTexture},
     render::{
         assets::{MaterialId, MeshId},
@@ -9,6 +8,17 @@ use crate::{
     },
     scene::instance_buffer::InstanceBufferRange,
 };
+
+/// Represents an instance of a mesh.
+///
+/// The instance points to the actual mesh it is an instance of,
+/// the scene node containing its spatial data,
+/// and the material for it.
+#[derive(Clone)]
+pub struct MeshInstance {
+    pub mesh: MeshId,
+    pub node: SceneNodeId,
+}
 
 /// A model, essentially a collection of materials (textures) and meshes (vertices).
 pub struct Model {

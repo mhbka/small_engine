@@ -1,4 +1,4 @@
-use crate::{
+use crate::graphics::{
     gpu::bind_group::GpuBindGroup,
     render::{
         assets::MeshId,

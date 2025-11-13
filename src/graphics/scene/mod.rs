@@ -1,32 +1,40 @@
 pub mod instance_buffer;
 pub mod node;
-pub mod spacial_transform;
+pub mod spatial_transform;
 pub mod camera;
+pub mod lighting;
 
 use std::collections::VecDeque;
 
-use slotmap::{SecondaryMap, SlotMap};
+use slotmap::{SecondaryMap, SlotMap, new_key_type};
 use thiserror::Error;
 
-use crate::{
+use crate::graphics::{
     gpu::GpuContext,
-    lighting::Lighting,
     render::{
         assets::{AssetStore, MaterialId, MeshId},
         commands::RenderCommand,
-        renderable::model::instance::{MeshInstance, MeshInstanceId},
+        renderable::{model::MeshInstance, sprite::SpriteInstance},
         renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId},
     },
     scene::{
-        camera::Camera, instance_buffer::InstanceBuffer, node::{SceneNode, SceneNodeId}, spacial_transform::{RawSpatialTransform, SpatialTransform}
+        lighting::Lighting, camera::Camera, instance_buffer::InstanceBuffer, node::{SceneNode, SceneNodeId}, spatial_transform::{RawSpatialTransform, SpatialTransform}
     },
 };
+
+new_key_type! {
+    /// To refer to a mesh instance.
+    pub struct MeshInstanceId;
+    /// To refer to a sprite instance.
+    pub struct SpriteInstanceId;
+}
 
 /// The main representation of "something" in the game.
 pub struct Scene {
     scene_nodes: SlotMap<SceneNodeId, SceneNode>,
     mesh_instances: SlotMap<MeshInstanceId, MeshInstance>,
     instances_by_mesh: SecondaryMap<MeshId, Vec<MeshInstanceId>>,
+    sprite_instances: SlotMap<SpriteInstanceId, SpriteInstance>,
     root_scene_node: SceneNodeId,
     camera: Camera,
     lights: Vec<Lighting>,
@@ -57,6 +65,7 @@ impl Scene {
             scene_nodes,
             mesh_instances: SlotMap::with_key(),
             instances_by_mesh: SecondaryMap::new(),
+            sprite_instances: SlotMap::with_key(),
             root_scene_node,
             camera,
             lights,

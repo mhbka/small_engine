@@ -1,4 +1,4 @@
-use crate::gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer};
+use crate::graphics::gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer};
 
 pub struct Lighting {
     uniform: LightUniform,

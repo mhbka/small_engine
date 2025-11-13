@@ -1,4 +1,4 @@
-use crate::gpu::GpuContext;
+use crate::graphics::gpu::GpuContext;
 use image::GenericImageView;
 
 /// Abstraction of the texture.

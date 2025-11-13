@@ -1,9 +1,9 @@
 use slotmap::SecondaryMap;
 use wgpu::BufferSlice;
 
-use crate::gpu::{GpuContext, buffer::GpuBuffer};
-use crate::scene::MeshId;
-use crate::scene::spacial_transform::RawSpatialTransform;
+use crate::graphics::gpu::{GpuContext, buffer::GpuBuffer};
+use crate::graphics::scene::MeshId;
+use crate::graphics::scene::spacial_transform::RawSpatialTransform;
 
 /// The data per instance. Currently just the spacial transform for it.
 pub type MeshInstanceData = RawSpatialTransform;

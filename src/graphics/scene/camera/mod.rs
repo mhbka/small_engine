@@ -2,7 +2,7 @@ use bytemuck::NoUninit;
 use cgmath::{Matrix4, SquareMatrix};
 use wgpu::{BindGroupEntry, BindGroupLayoutEntry, BindingType, BufferBindingType, ShaderStages};
 
-use crate::{gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer}, scene::camera::{ortho::{OrthoCameraData, OrthographicCamera}, perspective::{PerspectiveCamera, PerspectiveCameraData}}};
+use crate::graphics::{gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer}, scene::camera::{ortho::{OrthoCameraData, OrthographicCamera}, perspective::{PerspectiveCamera, PerspectiveCameraData}}};
 
 pub mod ortho;
 pub mod perspective;

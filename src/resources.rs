@@ -1,4 +1,4 @@
-use crate::{
+use crate::graphics::{
     gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer, texture::GpuTexture},
     render::{
         assets::AssetStore,

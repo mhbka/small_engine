@@ -1,8 +1,7 @@
 use cgmath::Zero;
 use cgmath::{InnerSpace, Rotation3, Vector3};
 use slotmap::new_key_type;
-
-use crate::scene::spacial_transform::{RawSpatialTransform, SpatialTransform};
+use crate::graphics::scene::spacial_transform::{RawSpatialTransform, SpatialTransform};
 
 new_key_type! {
     /// Used to reference a `SceneNode`.

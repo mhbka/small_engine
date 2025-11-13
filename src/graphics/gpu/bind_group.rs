@@ -1,4 +1,4 @@
-use crate::gpu::GpuContext;
+use crate::graphics::gpu::GpuContext;
 
 /// Abstraction of the bind group + its layout.
 #[derive(Clone, Debug)]

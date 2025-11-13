@@ -1,4 +1,4 @@
-use crate::gpu::GpuContext;
+use crate::graphics::gpu::GpuContext;
 use wgpu::{
     BufferDescriptor,
     util::{BufferInitDescriptor, DeviceExt},
