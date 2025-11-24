@@ -1,13 +1,9 @@
-pub mod camera;
 pub mod instance_buffer;
 pub mod lighting;
 pub mod raw_spatial_transform;
 
-use std::collections::VecDeque;
-
 use slotmap::{SecondaryMap, SlotMap, new_key_type};
 use thiserror::Error;
-
 use crate::{core::world::{World, WorldEntityId}, graphics::{
     gpu::GpuContext,
     render::{
@@ -17,12 +13,12 @@ use crate::{core::world::{World, WorldEntityId}, graphics::{
         renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId},
     },
     scene::{
-        camera::Camera,
         instance_buffer::InstanceBuffer,
         lighting::Lighting,
         raw_spatial_transform::RawSpatialTransform,
     },
-}};
+},
+    systems::camera::Camera};
 
 new_key_type! {
     /// To refer to a mesh instance.
@@ -113,11 +109,11 @@ impl Scene {
         Ok(commands)
     }
 
-    /// Writes any stored "updateable" data to their buffers.
+    /// Updates and writes updateable buffers.
     ///
     /// Currently, this is for the camera and light uniforms.
-    pub fn write_buffers(&mut self, gpu: &GpuContext) {
-        self.camera.write_uniform_buffer(gpu);
+    pub fn update_and_write_buffers(&mut self, world: &World, gpu: &GpuContext) {
+        self.camera.update_and_write_uniform_buffer(world, gpu);
         for light in &self.lights {
             light.update_uniform_buffer(gpu);
         }

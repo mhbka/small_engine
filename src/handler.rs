@@ -77,7 +77,6 @@ impl ApplicationHandler<State<'static>> for App<'static> {
             Some(canvas) => canvas,
             None => return,
         };
-
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => state.resize(size.width, size.height),

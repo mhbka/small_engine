@@ -1,5 +1,4 @@
 use bytemuck::{Pod, Zeroable};
-use cgmath::{ElementWise, Matrix, Matrix3, Matrix4, Quaternion, SquareMatrix, Vector3, Zero};
 use wgpu::{VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode};
 
 /// The raw data for a spatial transform, to be directly used in the shader.

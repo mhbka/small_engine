@@ -1,14 +1,11 @@
 use bytemuck::NoUninit;
 use cgmath::{Matrix4, SquareMatrix};
 use wgpu::{BindGroupEntry, BindGroupLayoutEntry, BindingType, BufferBindingType, ShaderStages};
-
-use crate::graphics::{
-    gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer},
-    scene::camera::{
+use crate::{core::{entity::WorldEntity, world::{World, WorldEntityId}}, systems::camera::{
         ortho::{OrthoCameraData, OrthographicCamera},
         perspective::{PerspectiveCamera, PerspectiveCameraData},
-    },
-};
+    }};
+use crate::graphics::gpu::{GpuContext, bind_group::GpuBindGroup, buffer::GpuBuffer};
 
 pub mod ortho;
 pub mod perspective;
@@ -22,25 +19,44 @@ pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::from_cols(
 );
 
 /// A camera for a scene.
-pub enum Camera {
+/// 
+/// Spatial data is denoted by its referenced entity.
+pub struct Camera {
+    entity: WorldEntityId,
+    cam_type: CameraType
+}
+
+/// The type of camera.
+pub enum CameraType {
     Perspective(PerspectiveCamera),
     Ortho(OrthographicCamera),
 }
 
 impl Camera {
-    /// Write the camera's updated uniform buffer to the GPU.
-    pub fn write_uniform_buffer(&mut self, gpu: &GpuContext) {
-        match self {
-            Self::Perspective(camera) => camera.write_uniform_buffer(gpu),
-            Self::Ortho(camera) => camera.write_uniform_buffer(gpu),
+    /// Create the camera.
+    pub fn new(entity: WorldEntityId, cam_type: CameraType) -> Self {
+        Self {
+            entity,
+            cam_type
+        }
+    }
+
+    /// Update the camera's data and write it to the uniform data.
+    pub fn update_and_write_uniform_buffer(&mut self, world: &World, gpu: &GpuContext) {
+        let entity = world
+            .entity(self.entity)
+            .expect("Camera's entity must exist");
+        match &mut self.cam_type {
+            CameraType::Perspective(camera) => camera.update_and_write_uniform_buffer(entity, gpu),
+            CameraType::Ortho(camera) => camera.update_and_write_uniform_buffer(entity, gpu),
         }
     }
 
     /// Get the camera's buffer.
     pub fn buffer(&self) -> &GpuBuffer {
-        match self {
-            Self::Perspective(c) => c.buffer(),
-            Self::Ortho(c) => c.buffer(),
+        match &self.cam_type {
+            CameraType::Perspective(c) => c.buffer(),
+            CameraType::Ortho(c) => c.buffer(),
         }
     }
 }
@@ -63,15 +79,15 @@ impl CameraUniform {
     }
 
     /// Update the uniform for a perspective camera.
-    pub fn update_perspective(&mut self, data: &PerspectiveCameraData) {
-        self.view = data.build_view_matrix().into();
-        self.view_proj = data.build_view_projection_matrix().into();
+    pub fn update_perspective(&mut self, data: &PerspectiveCameraData, entity: &WorldEntity) {
+        self.view = data.build_view_matrix(entity).into();
+        self.view_proj = data.build_view_projection_matrix(entity).into();
     }
 
     /// Update the uniform for an ortho camera.
-    pub fn update_ortho(&mut self, data: &OrthoCameraData) {
-        self.view = data.build_view_matrix().into();
-        self.view_proj = data.build_view_projection_matrix().into();
+    pub fn update_ortho(&mut self, data: &OrthoCameraData, entity: &WorldEntity) {
+        self.view = data.build_view_matrix(entity).into();
+        self.view_proj = data.build_view_projection_matrix(entity).into();
     }
 }
 

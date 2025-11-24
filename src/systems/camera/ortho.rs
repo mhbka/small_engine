@@ -1,7 +1,8 @@
-use crate::graphics::scene::camera::OPENGL_TO_WGPU_MATRIX;
+use crate::core::entity::WorldEntity;
+use crate::core::world::World;
+use crate::systems::camera::{OPENGL_TO_WGPU_MATRIX, CameraUniform};
 use crate::graphics::{
     gpu::{GpuContext, buffer::GpuBuffer},
-    scene::camera::CameraUniform,
 };
 use cgmath::{Deg, Matrix4, Quaternion, Rotation3, Vector3, ortho};
 
@@ -19,9 +20,10 @@ impl OrthographicCamera {
     /// Create the orthographic camera.
     pub fn new(
         gpu: &GpuContext,
+        camera_entity: &WorldEntity,
+        label: &str,
         origin_at_top_left: bool,
         invert_y: bool,
-        position: Vector3<f32>,
         width: f32,
         height: f32,
         yaw: f32,
@@ -34,7 +36,6 @@ impl OrthographicCamera {
             OrthoCameraData::new(
                 origin_at_top_left,
                 invert_y,
-                position,
                 width,
                 height,
                 yaw,
@@ -45,9 +46,9 @@ impl OrthographicCamera {
             )
         };
         let mut uniform = CameraUniform::new();
-        uniform.update_ortho(&data);
+        uniform.update_ortho(&data, camera_entity);
         let buffer =
-            GpuBuffer::create_uniform("ortho_camera_buffer", gpu, bytemuck::cast_slice(&[uniform]));
+            GpuBuffer::create_uniform(label, gpu, bytemuck::cast_slice(&[uniform]));
         Self {
             data,
             uniform,
@@ -56,8 +57,8 @@ impl OrthographicCamera {
     }
 
     /// Write the camera's uniform buffer to the GPU.
-    pub fn write_uniform_buffer(&mut self, gpu: &GpuContext) {
-        self.uniform.update_ortho(&self.data);
+    pub(super) fn update_and_write_uniform_buffer(&mut self, entity: &WorldEntity, gpu: &GpuContext) {
+        self.uniform.update_ortho(&self.data, entity);
         gpu.queue().write_buffer(
             self.buffer.handle(),
             0,
@@ -80,7 +81,6 @@ impl OrthographicCamera {
 pub struct OrthoCameraData {
     pub origin_at_top_left: bool,
     pub invert_y: bool,
-    pub position: Vector3<f32>,
     pub width: f32,
     pub height: f32,
     pub yaw: f32,
@@ -94,7 +94,6 @@ impl OrthoCameraData {
     pub fn new(
         origin_at_top_left: bool,
         invert_y: bool,
-        position: Vector3<f32>,
         width: f32,
         height: f32,
         yaw: f32,
@@ -106,7 +105,6 @@ impl OrthoCameraData {
         Self {
             origin_at_top_left,
             invert_y,
-            position,
             width,
             height,
             yaw,
@@ -117,16 +115,17 @@ impl OrthoCameraData {
         }
     }
 
-    pub fn build_view_matrix(&self) -> Matrix4<f32> {
+    pub fn build_view_matrix(&self, entity: &WorldEntity) -> Matrix4<f32> {
+        let transform = entity.transform();
         let rotation: Matrix4<f32> = (Quaternion::from_angle_y(Deg(self.yaw))
             * Quaternion::from_angle_x(Deg(self.pitch)))
         .into();
-        let translation = Matrix4::from_translation(-self.position);
+        let translation = Matrix4::from_translation(-transform.position);
         rotation * translation
     }
 
-    pub fn build_view_projection_matrix(&self) -> Matrix4<f32> {
-        let view = self.build_view_matrix();
+    pub fn build_view_projection_matrix(&self, entity: &WorldEntity) -> Matrix4<f32> {
+        let view = self.build_view_matrix(entity);
 
         let (mut left, mut right) = if self.origin_at_top_left {
             (0.0, self.width)

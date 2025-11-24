@@ -22,26 +22,39 @@ impl SpatialTransform {
 
     /// Get the uniform data for this transform.
     pub fn to_raw(&self) -> RawSpatialTransform {
-        let matrices = self.to_matrices();
         RawSpatialTransform {
-            model: matrices.0.into(),
-            normal: matrices.1.into(),
+            model: self.model().into(),
+            normal: self.normal().into(),
         }
     }
 
-    /// Get the model and normal matrices.
-    pub fn to_matrices(&self) -> (Matrix4<f32>, Matrix3<f32>) {
+    /// Get the model matrix.
+    pub fn model(&self) -> Matrix4<f32> {
         (
-            (Matrix4::from_translation(self.position)
-                * Matrix4::from(self.rotation)
-                * Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, self.scale.z))
-            .into(),
-            Matrix3::from(self.rotation)
-                .invert()
-                .unwrap_or(Matrix3::identity())
-                .transpose()
-                .into(),
+            Matrix4::from_translation(self.position)
+            * Matrix4::from(self.rotation)
+            * Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, self.scale.z)
         )
+        .into()
+    }
+
+    /// Get the normal matrix.
+    pub fn normal(&self) -> Matrix3<f32> {
+        Matrix3::from(self.rotation)
+            .invert()
+            .unwrap_or(Matrix3::identity())
+            .transpose()
+            .into()
+    }
+
+    /// Get the forward direction of the transform.
+    pub fn forward(&self) -> Vector3<f32> {
+        self.rotation * Vector3::unit_z()
+    }
+
+    /// Get the up direction of the transform.
+    pub fn up(&self) -> Vector3<f32> {
+        self.rotation * Vector3::unit_y()
     }
 
     /// Combines this transform with a child transform.
@@ -64,8 +77,10 @@ impl SpatialTransform {
     /// Combine this transform with a child transform.
     /// Returns the resulting raw overall transform of the child.
     pub fn combine_raw(&self, b: &SpatialTransform) -> RawSpatialTransform {
-        let (self_model, self_norm) = self.to_matrices();
-        let (b_model, b_norm) = b.to_matrices();
+        let self_model = self.model();
+        let self_norm = self.normal();
+        let b_model = b.model();
+        let b_norm = b.normal();
         RawSpatialTransform {
             model: (self_model * b_model).into(),
             normal: (self_norm * b_norm).into(),

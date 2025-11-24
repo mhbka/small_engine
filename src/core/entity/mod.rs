@@ -4,6 +4,7 @@ use crate::graphics::scene::raw_spatial_transform::RawSpatialTransform;
 
 pub mod spatial_transform;
 
+/// Represents an entity.
 pub struct WorldEntity {
     parent: Option<WorldEntityId>,
     children: Vec<WorldEntityId>,
@@ -13,7 +14,7 @@ pub struct WorldEntity {
 }
 
 impl WorldEntity {
-    /// Create a new scene node.
+    /// Create a new entity.
     pub(super) fn new(
         parent: Option<WorldEntityId>,
         children: Vec<WorldEntityId>,
@@ -28,12 +29,12 @@ impl WorldEntity {
         }
     }
 
-    /// Get the overall transform for this node. For use in shader.
+    /// Get the raw overall transform for this entity. For use in shader.
     pub fn transform_raw(&self) -> RawSpatialTransform {
         self.parent_transform.combine_raw(&self.local_transform)
     }
 
-    /// Get the overall transform for this node. For propagation.
+    /// Get the overall transform for this entity. For propagation.
     pub fn transform(&self) -> SpatialTransform {
         self.parent_transform.combine(&self.local_transform)
     }

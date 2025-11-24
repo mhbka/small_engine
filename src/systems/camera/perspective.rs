@@ -1,9 +1,10 @@
-use crate::graphics::scene::camera::CameraUniform;
+use crate::core::entity::WorldEntity;
+use crate::core::world::World;
+use crate::systems::camera::{OPENGL_TO_WGPU_MATRIX, CameraUniform};
 use crate::graphics::{
     gpu::{GpuContext, buffer::GpuBuffer},
-    scene::camera::OPENGL_TO_WGPU_MATRIX,
 };
-use cgmath::{Deg, Matrix4, Point3, Vector3, perspective};
+use cgmath::{Deg, EuclideanSpace, Matrix4, Point3, Vector3, perspective};
 use wgpu::SurfaceConfiguration;
 use winit::keyboard::KeyCode;
 
@@ -16,20 +17,22 @@ pub struct PerspectiveCamera {
 
 impl PerspectiveCamera {
     /// Create a perspective camera.
-    pub fn new(gpu: &GpuContext, config: &SurfaceConfiguration) -> Self {
+    pub fn new(
+        gpu: &GpuContext, 
+        config: &SurfaceConfiguration, 
+        camera_entity: &WorldEntity,
+        label: &str
+    ) -> Self {
         let data = PerspectiveCameraData::new(
-            (0.0, 1.0, 2.0).into(),
-            (0.0, 0.0, 0.0).into(),
-            Vector3::unit_y(),
             config.width as f32 / config.height as f32,
             45.0,
             0.1,
             100.0,
         );
         let mut uniform = CameraUniform::new();
-        uniform.update_perspective(&data);
+        uniform.update_perspective(&data, camera_entity);
         let buffer = GpuBuffer::create_uniform(
-            "perspective_camera_buffer",
+            label,
             gpu,
             bytemuck::cast_slice(&[uniform]),
         );
@@ -42,8 +45,8 @@ impl PerspectiveCamera {
     }
 
     /// Update and write the camera's uniform buffer to the GPU.
-    pub fn write_uniform_buffer(&mut self, gpu: &GpuContext) {
-        self.uniform.update_perspective(&self.data);
+    pub(super) fn update_and_write_uniform_buffer(&mut self, entity: &WorldEntity, gpu: &GpuContext) {
+        self.uniform.update_perspective(&self.data, entity);
         gpu.queue().write_buffer(
             self.buffer().handle(),
             0,
@@ -64,9 +67,6 @@ impl PerspectiveCamera {
 
 /// Data for the camera.
 pub struct PerspectiveCameraData {
-    pub eye: Point3<f32>,
-    pub target: Point3<f32>,
-    pub up: Vector3<f32>,
     pub aspect: f32,
     pub fovy: f32,
     pub znear: f32,
@@ -75,18 +75,12 @@ pub struct PerspectiveCameraData {
 
 impl PerspectiveCameraData {
     pub fn new(
-        eye: Point3<f32>,
-        target: Point3<f32>,
-        up: Vector3<f32>,
         aspect: f32,
         fovy: f32,
         znear: f32,
         zfar: f32,
     ) -> Self {
         Self {
-            eye,
-            target,
-            up,
             aspect,
             fovy,
             znear,
@@ -94,12 +88,16 @@ impl PerspectiveCameraData {
         }
     }
 
-    pub fn build_view_matrix(&self) -> Matrix4<f32> {
-        Matrix4::look_at_rh(self.eye, self.target, self.up)
+    pub(super) fn build_view_matrix(&self, entity: &WorldEntity) -> Matrix4<f32> {
+        let transform = entity.transform();
+        let position = Point3::from_vec(transform.position);
+        let forward = position + transform.forward();
+        let up = transform.up();
+        Matrix4::look_at_rh(position, forward, up)
     }
 
-    pub fn build_view_projection_matrix(&self) -> Matrix4<f32> {
-        let view = self.build_view_matrix();
+    pub(super) fn build_view_projection_matrix(&self, entity: &WorldEntity) -> Matrix4<f32> {
+        let view = self.build_view_matrix(entity);
         let proj =
             OPENGL_TO_WGPU_MATRIX * perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
         return proj * view;
@@ -107,6 +105,8 @@ impl PerspectiveCameraData {
 }
 
 /// The camera controller, used for mapping inputs to camera movement.
+/// 
+/// TODO: move to input controller and delete this
 pub struct PerspectiveCameraController {
     pub speed: f32,
     pub is_forward_pressed: bool,
@@ -145,38 +145,6 @@ impl PerspectiveCameraController {
                 true
             }
             _ => false,
-        }
-    }
-
-    pub fn update_camera(&self, camera: &mut PerspectiveCameraData) {
-        use cgmath::InnerSpace;
-        let forward = camera.target - camera.eye;
-        let forward_norm = forward.normalize();
-        let forward_mag = forward.magnitude();
-
-        // Prevents glitching when the Perspectivecamera gets too close to the
-        // center of the scene.
-        if self.is_forward_pressed && forward_mag > self.speed {
-            camera.eye += forward_norm * self.speed;
-        }
-        if self.is_backward_pressed {
-            camera.eye -= forward_norm * self.speed;
-        }
-
-        let right = forward_norm.cross(camera.up);
-
-        // Redo radius calc in case the forward/backward is pressed.
-        let forward = camera.target - camera.eye;
-        let forward_mag = forward.magnitude();
-
-        if self.is_right_pressed {
-            // Rescale the distance between the target and the eye so
-            // that it doesn't change. The eye, therefore, still
-            // lies on the circle made by the target and eye.
-            camera.eye = camera.target - (forward + right * self.speed).normalize() * forward_mag;
-        }
-        if self.is_left_pressed {
-            camera.eye = camera.target - (forward - right * self.speed).normalize() * forward_mag;
         }
     }
 }

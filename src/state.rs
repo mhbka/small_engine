@@ -1,4 +1,4 @@
-use cgmath::Rotation3;
+use cgmath::{Quaternion, Rotation3, Vector3, Zero};
 use std::sync::Arc;
 use web_time::Instant;
 use wgpu::Backends;
@@ -13,6 +13,7 @@ use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
+use crate::core::entity::spatial_transform::SpatialTransform;
 use crate::core::world::World;
 use crate::example::generated_spaced_entities;
 use crate::graphics::gpu::GpuContext;
@@ -23,11 +24,11 @@ use crate::graphics::render::renderable::model::MeshInstance;
 use crate::graphics::render::renderable::model::ModelVertex;
 use crate::graphics::render::renderer::Renderer;
 use crate::graphics::scene::Scene;
-use crate::graphics::scene::camera::perspective::PerspectiveCamera;
-use crate::graphics::scene::camera::{Camera, create_camera_bind_group};
 use crate::graphics::scene::instance_buffer::MeshInstanceData;
 use crate::graphics::scene::lighting::{Lighting, create_lighting_bind_group};
 use crate::resources;
+use crate::systems::camera::{Camera, CameraType, create_camera_bind_group};
+use crate::systems::camera::perspective::PerspectiveCamera;
 
 // This will store the state of our game
 pub struct State<'a> {
@@ -103,9 +104,26 @@ impl<'a> State<'a> {
         let gpu = GpuContext::new(device, queue);
         let device = gpu.device();
 
+        // world
+        let mut world = World::new();
+
+        // scene nodes
+        let entities = generated_spaced_entities(&mut world);
+
         // camera
-        let perspective_camera = PerspectiveCamera::new(&gpu, &config);
-        let camera = Camera::Perspective(perspective_camera);
+        let cam_entity_id = world.add_entity(
+            None, 
+            vec![], 
+            SpatialTransform {
+                scale: Vector3 { x: 1.0, y: 1.0, z: 1.0 },
+                position: Vector3::zero(),
+                rotation: Quaternion::new(1.0, 0.0, 0.0, 0.0)
+            }
+        );
+        let cam_entity = world.entity(cam_entity_id).unwrap();
+        let perspective_camera = PerspectiveCamera::new(&gpu, &config, cam_entity, "perspective_camera");
+        let cam_type = CameraType::Perspective(perspective_camera);
+        let camera = Camera::new(cam_entity_id, cam_type);
         let camera_bind_group = create_camera_bind_group(&gpu, camera.buffer());
 
         // shader
@@ -144,12 +162,6 @@ impl<'a> State<'a> {
         let obj_model = resources::load_model("cube.obj", &gpu, &mut assets)
             .await
             .unwrap();
-        
-        // world
-        let mut world = World::new();
-
-        // scene nodes
-        let entities = generated_spaced_entities(&mut world);
 
         // renderer
         let mut renderer = Renderer::new(gpu.clone(), surface, config, assets);
@@ -196,8 +208,6 @@ impl<'a> State<'a> {
         let delta_time = now - self.last_frame_update;
         self.last_frame_update = now;
 
-        self.scene.camera().update();
-
         for light in self.scene.lights() {
             light.update(|uniform| {
                 let old_position: cgmath::Vector3<_> = uniform.position.into();
@@ -208,7 +218,7 @@ impl<'a> State<'a> {
             });
         }
 
-        self.scene.write_buffers(&self.gpu);
+        self.scene.update_and_write_buffers(&self.world, &self.gpu);
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -217,7 +227,7 @@ impl<'a> State<'a> {
 
     pub fn render(&mut self) -> Result<(), SurfaceError> {
         self.window.request_redraw();
-        self.renderer.render_scene_for_frame(&self.scene).unwrap();
+        self.renderer.render_scene_for_frame(&self.scene, &self.world).unwrap();
         Ok(())
     }
 
@@ -225,7 +235,7 @@ impl<'a> State<'a> {
         if (code, is_pressed) == (KeyCode::Escape, true) {
             event_loop.exit();
         } else {
-            self.scene.camera().handle_key(code, is_pressed);
+            // self.scene.camera().handle_key(code, is_pressed);
         }
     }
 }
