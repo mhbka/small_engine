@@ -11,12 +11,12 @@ pub struct SpatialTransform {
 }
 
 impl SpatialTransform {
-    /// Get the identity transform (ie doesn't do anything).
+    /// Get the identity transform (ie doesn't do anything and is positioned at origin).
     pub fn identity() -> Self {
         Self {
             scale: Vector3::new(1.0, 1.0, 1.0),
             position: Vector3::new(0.0, 0.0, 0.0),
-            rotation: Quaternion::zero(),
+            rotation: Quaternion::new(1.0, 0.0, 0.0, 0.0),
         }
     }
 

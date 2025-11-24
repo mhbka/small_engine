@@ -46,6 +46,11 @@ impl World {
         self.entities.get(id)
     }
 
+    /// Get the given entity mutably.
+    pub fn entity_mut(&mut self, id: WorldEntityId) -> Option<&mut WorldEntity> {
+        self.entities.get_mut(id)
+    }
+
     /// Walks the entity graph and propagates each entity's transforms to its children's parent transforms.
     fn update_graph(&mut self) {
         let mut node_queue = VecDeque::with_capacity(self.entities.len());

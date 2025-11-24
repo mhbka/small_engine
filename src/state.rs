@@ -1,4 +1,5 @@
 use cgmath::{Quaternion, Rotation3, Vector3, Zero};
+use winit::event::{ElementState, MouseScrollDelta};
 use std::sync::Arc;
 use web_time::Instant;
 use wgpu::Backends;
@@ -26,18 +27,22 @@ use crate::graphics::render::renderer::Renderer;
 use crate::graphics::scene::Scene;
 use crate::graphics::scene::instance_buffer::MeshInstanceData;
 use crate::graphics::scene::lighting::{Lighting, create_lighting_bind_group};
+use crate::input::state::InputState;
 use crate::resources;
 use crate::systems::camera::{Camera, CameraType, create_camera_bind_group};
 use crate::systems::camera::perspective::PerspectiveCamera;
+use crate::systems::controller::freecam::FreecamController;
 
 // This will store the state of our game
 pub struct State<'a> {
     pub window: Arc<Window>,
+    input_state: InputState,
     gpu: GpuContext,
     world: World, 
     renderer: Renderer<'a>,
     scene: Scene,
     last_frame_update: Instant,
+    freecam: FreecamController
 }
 
 impl<'a> State<'a> {
@@ -114,11 +119,7 @@ impl<'a> State<'a> {
         let cam_entity_id = world.add_entity(
             None, 
             vec![], 
-            SpatialTransform {
-                scale: Vector3 { x: 1.0, y: 1.0, z: 1.0 },
-                position: Vector3::zero(),
-                rotation: Quaternion::new(1.0, 0.0, 0.0, 0.0)
-            }
+            SpatialTransform::identity()
         );
         let cam_entity = world.entity(cam_entity_id).unwrap();
         let perspective_camera = PerspectiveCamera::new(&gpu, &config, cam_entity, "perspective_camera");
@@ -193,13 +194,21 @@ impl<'a> State<'a> {
             })
             .collect::<Vec<_>>();
 
+        // input state
+        let input_state = InputState::new(true);
+
+        // freecam
+        let freecam = FreecamController::new(cam_entity_id);
+
         Ok(Self {
             window,
+            input_state,
             gpu,
             renderer,
             scene,
             world,
             last_frame_update: Instant::now(),
+            freecam
         })
     }
 
@@ -219,6 +228,7 @@ impl<'a> State<'a> {
         }
 
         self.scene.update_and_write_buffers(&self.world, &self.gpu);
+        self.freecam.update(&self.input_state, &mut self.world, delta_time.as_secs_f32()).unwrap();
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -231,11 +241,27 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn handle_key(&mut self, event_loop: &ActiveEventLoop, code: KeyCode, is_pressed: bool) {
-        if (code, is_pressed) == (KeyCode::Escape, true) {
+    pub fn reset_for_frame(&mut self) {
+        self.input_state.begin_frame();
+    }
+
+    pub fn handle_key(&mut self, event_loop: &ActiveEventLoop, key_code: KeyCode, key_state: ElementState) {
+        if (key_code, key_state.is_pressed()) == (KeyCode::Escape, true) {
             event_loop.exit();
         } else {
-            // self.scene.camera().handle_key(code, is_pressed);
+            self.input_state.process_key_event(key_code, key_state);
         }
+    }
+
+    pub fn handle_cursor_delta(&mut self, delta_x: f64, delta_y: f64) {
+        self.input_state.process_cursor_delta(delta_x as f32, delta_y as f32);
+    }
+
+    pub fn handle_cursor_movement(&mut self, x: f64, y: f64) {
+        self.input_state.process_cursor_movement(x as f32, y as f32);
+    }
+
+    pub fn handle_mouse_wheel(&mut self, change: MouseScrollDelta) {
+        self.input_state.process_mouse_scroll(change)
     }
 }

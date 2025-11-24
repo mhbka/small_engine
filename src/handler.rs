@@ -2,8 +2,9 @@ use crate::app::App;
 use crate::state::State;
 use std::sync::Arc;
 use wgpu::SurfaceError;
-use winit::event::{KeyEvent, WindowEvent};
+use winit::event::{DeviceEvent, KeyEvent, WindowEvent};
 use winit::keyboard::PhysicalKey;
+use winit::window::CursorGrabMode;
 use winit::{application::ApplicationHandler, event_loop::ActiveEventLoop, window::Window};
 
 impl ApplicationHandler<State<'static>> for App<'static> {
@@ -27,6 +28,10 @@ impl ApplicationHandler<State<'static>> for App<'static> {
         }
 
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+
+        // TODO: move this + some other window setup stuff to another function
+        window.set_cursor_visible(false);
+        window.set_cursor_grab(CursorGrabMode::Locked).unwrap();
 
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -67,6 +72,27 @@ impl ApplicationHandler<State<'static>> for App<'static> {
         self.state = Some(event);
     }
 
+    fn device_event(
+            &mut self,
+            event_loop: &ActiveEventLoop,
+            device_id: winit::event::DeviceId,
+            event: DeviceEvent,
+        ) {
+        let state = match &mut self.state {
+            Some(canvas) => canvas,
+            None => return,
+        };
+        match event {
+            DeviceEvent::MouseMotion { delta } => {
+                state.handle_cursor_delta(delta.0, delta.1);
+            },
+            DeviceEvent::MouseWheel { delta } => {
+                state.handle_mouse_wheel(delta);
+            }
+            _ => {}
+        }
+    }
+
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
@@ -92,6 +118,7 @@ impl ApplicationHandler<State<'static>> for App<'static> {
                         log::error!("Unable to render: {err}");
                     }
                 }
+                state.reset_for_frame();
             }
             WindowEvent::KeyboardInput {
                 event:
@@ -101,7 +128,7 @@ impl ApplicationHandler<State<'static>> for App<'static> {
                         ..
                     },
                 ..
-            } => state.handle_key(event_loop, code, key_state.is_pressed()),
+            } => state.handle_key(event_loop, code, key_state),
             _ => {}
         }
     }
