@@ -20,6 +20,8 @@ pub struct InstanceBufferRange {
 }
 
 /// This is a special big vertex buffer, functioning as a single instance buffer for many meshes.
+/// 
+/// This is so that we can just use slices out of this 1 buffer for many meshes, apparently an optimization.
 pub struct InstanceBuffer {
     gpu: GpuContext,
     buffer: GpuBuffer,

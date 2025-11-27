@@ -40,11 +40,14 @@ impl SpatialTransform {
 
     /// Get the normal matrix.
     pub fn normal(&self) -> Matrix3<f32> {
-        Matrix3::from(self.rotation)
-            .invert()
-            .unwrap_or(Matrix3::identity())
-            .transpose()
-            .into()
+        let m4 = self.model();
+        // Extract the upper-left 3x3 matrix (columns) from the 4x4 model matrix
+        let m3 = Matrix3::from_cols(
+            m4.x.truncate(), // column 0 (x, y, z)
+            m4.y.truncate(), // column 1
+            m4.z.truncate(), // column 2
+        );
+        m3.invert().unwrap_or(Matrix3::identity()).transpose()
     }
 
     /// Get the forward direction of the transform.
@@ -77,13 +80,15 @@ impl SpatialTransform {
     /// Combine this transform with a child transform.
     /// Returns the resulting raw overall transform of the child.
     pub fn combine_raw(&self, b: &SpatialTransform) -> RawSpatialTransform {
-        let self_model = self.model();
-        let self_norm = self.normal();
-        let b_model = b.model();
-        let b_norm = b.normal();
+        let combined_model = self.model() * b.model();
+        let m3 = Matrix3::from_cols(
+            combined_model.x.truncate(),
+            combined_model.y.truncate(),
+            combined_model.z.truncate(),
+        );
         RawSpatialTransform {
-            model: (self_model * b_model).into(),
-            normal: (self_norm * b_norm).into(),
+            model: combined_model.into(),
+            normal: m3.invert().unwrap_or(Matrix3::identity()).transpose().into(),
         }
     }
 }

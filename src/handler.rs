@@ -2,6 +2,7 @@ use crate::app::App;
 use crate::state::State;
 use std::sync::Arc;
 use wgpu::SurfaceError;
+use winit::dpi::{PhysicalSize, Size};
 use winit::event::{DeviceEvent, KeyEvent, WindowEvent};
 use winit::keyboard::PhysicalKey;
 use winit::window::CursorGrabMode;
@@ -10,7 +11,8 @@ use winit::{application::ApplicationHandler, event_loop::ActiveEventLoop, window
 impl ApplicationHandler<State<'static>> for App<'static> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         #[allow(unused_mut)]
-        let mut window_attributes = Window::default_attributes();
+        let mut window_attributes = Window::default_attributes()
+            .with_inner_size(Size::Physical(PhysicalSize::new(1920, 1080)));
 
         #[cfg(target_arch = "wasm32")]
         {

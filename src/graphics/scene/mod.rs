@@ -1,5 +1,5 @@
 pub mod instance_buffer;
-pub mod lighting;
+pub mod light;
 pub mod raw_spatial_transform;
 
 use slotmap::{SecondaryMap, SlotMap, new_key_type};
@@ -13,9 +13,7 @@ use crate::{core::world::{World, WorldEntityId}, graphics::{
         renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId},
     },
     scene::{
-        instance_buffer::InstanceBuffer,
-        lighting::Lighting,
-        raw_spatial_transform::RawSpatialTransform,
+        instance_buffer::InstanceBuffer, light::point::{PointLight, PointLightCollection}, raw_spatial_transform::RawSpatialTransform
     },
 },
     systems::camera::Camera};
@@ -33,7 +31,7 @@ pub struct Scene {
     instances_by_mesh: SecondaryMap<MeshId, Vec<MeshInstanceId>>,
     sprite_instances: SlotMap<SpriteInstanceId, SpriteInstance>,
     camera: Camera,
-    lights: Vec<Lighting>,
+    point_lights: PointLightCollection,
     pipeline: PipelineId,
     global_bind_group: GlobalBindGroupId,
     lighting_bind_group: LightingBindGroupId,
@@ -43,7 +41,7 @@ impl Scene {
     /// Construct a scene.
     pub fn new(
         camera: Camera,
-        lights: Vec<Lighting>,
+        point_lights: PointLightCollection,
         pipeline: PipelineId,
         global_bind_group: GlobalBindGroupId,
         lighting_bind_group: LightingBindGroupId,
@@ -53,7 +51,7 @@ impl Scene {
             instances_by_mesh: SecondaryMap::new(),
             sprite_instances: SlotMap::with_key(),
             camera,
-            lights,
+            point_lights,
             pipeline,
             global_bind_group,
             lighting_bind_group,
@@ -114,9 +112,7 @@ impl Scene {
     /// Currently, this is for the camera and light uniforms.
     pub fn update_and_write_buffers(&mut self, world: &World, gpu: &GpuContext) {
         self.camera.update_and_write_uniform_buffer(world, gpu);
-        for light in &self.lights {
-            light.update_uniform_buffer(gpu);
-        }
+        self.point_lights.update_and_write_buffer(world, gpu);
     }
 
     /// Add the mesh instances under that mesh, returning their IDs.
@@ -137,16 +133,6 @@ impl Scene {
                 .map_or((), |_| ()),
         }
         instance_ids
-    }
-
-    /// Get the camera.
-    pub fn camera(&mut self) -> &mut Camera {
-        &mut self.camera
-    }
-
-    /// Get the lighting.
-    pub fn lights(&mut self) -> &mut Vec<Lighting> {
-        &mut self.lights
     }
 }
 

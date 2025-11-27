@@ -51,12 +51,23 @@ impl GpuBuffer {
         Self { buffer }
     }
 
-    /// Create a (writeable) uniform buffer.
+    /// Create a writeable uniform buffer.
     pub fn create_uniform(label: &str, gpu: &GpuContext, contents: &[u8]) -> Self {
         let buffer = gpu.device().create_buffer_init(&BufferInitDescriptor {
             label: Some(label),
             contents,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        Self { buffer }
+    }
+
+     /// Creates a writeable storage buffer that is uninitialized but has a fixed capacity of `size`.
+    pub fn create_storage_uninit(label: &str, gpu: &GpuContext, size: u64) -> Self {
+        let buffer = gpu.device().create_buffer(&BufferDescriptor {
+            label: Some(label),
+            size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
         Self { buffer }
     }

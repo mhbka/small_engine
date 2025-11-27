@@ -6,7 +6,6 @@ use crate::graphics::{
 };
 use cgmath::{Deg, EuclideanSpace, Matrix4, Point3, Vector3, perspective};
 use wgpu::SurfaceConfiguration;
-use winit::keyboard::KeyCode;
 
 /// A perspective camera, ie one with depth scaling. Used for 3D scenes usually.
 pub struct PerspectiveCamera {
@@ -36,7 +35,6 @@ impl PerspectiveCamera {
             gpu,
             bytemuck::cast_slice(&[uniform]),
         );
-
         Self {
             data,
             uniform,
@@ -101,50 +99,5 @@ impl PerspectiveCameraData {
         let proj =
             OPENGL_TO_WGPU_MATRIX * perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
         return proj * view;
-    }
-}
-
-/// The camera controller, used for mapping inputs to camera movement.
-/// 
-/// TODO: move to input controller and delete this
-pub struct PerspectiveCameraController {
-    pub speed: f32,
-    pub is_forward_pressed: bool,
-    pub is_backward_pressed: bool,
-    pub is_left_pressed: bool,
-    pub is_right_pressed: bool,
-}
-
-impl PerspectiveCameraController {
-    pub fn new(speed: f32) -> Self {
-        Self {
-            speed,
-            is_forward_pressed: false,
-            is_backward_pressed: false,
-            is_left_pressed: false,
-            is_right_pressed: false,
-        }
-    }
-
-    pub fn handle_key(&mut self, code: KeyCode, is_pressed: bool) -> bool {
-        match code {
-            KeyCode::KeyW | KeyCode::ArrowUp => {
-                self.is_forward_pressed = is_pressed;
-                true
-            }
-            KeyCode::KeyA | KeyCode::ArrowLeft => {
-                self.is_left_pressed = is_pressed;
-                true
-            }
-            KeyCode::KeyS | KeyCode::ArrowDown => {
-                self.is_backward_pressed = is_pressed;
-                true
-            }
-            KeyCode::KeyD | KeyCode::ArrowRight => {
-                self.is_right_pressed = is_pressed;
-                true
-            }
-            _ => false,
-        }
     }
 }

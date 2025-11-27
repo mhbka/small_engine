@@ -1,5 +1,5 @@
 use bytemuck::NoUninit;
-use cgmath::{Matrix4, SquareMatrix};
+use cgmath::{Matrix4, SquareMatrix, Vector3, Zero};
 use wgpu::{BindGroupEntry, BindGroupLayoutEntry, BindingType, BufferBindingType, ShaderStages};
 use crate::{core::{entity::WorldEntity, world::{World, WorldEntityId}}, systems::camera::{
         ortho::{OrthoCameraData, OrthographicCamera},

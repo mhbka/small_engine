@@ -26,7 +26,7 @@ use crate::graphics::render::renderable::model::ModelVertex;
 use crate::graphics::render::renderer::Renderer;
 use crate::graphics::scene::Scene;
 use crate::graphics::scene::instance_buffer::MeshInstanceData;
-use crate::graphics::scene::lighting::{Lighting, create_lighting_bind_group};
+use crate::graphics::scene::light::point::{PointLight, PointLightCollection};
 use crate::input::state::InputState;
 use crate::resources;
 use crate::systems::camera::{Camera, CameraType, create_camera_bind_group};
@@ -131,8 +131,9 @@ impl<'a> State<'a> {
         let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
 
         // lighting
-        let lighting = Lighting::create(&gpu, "lighting", [2.0, 10.0, 2.0], [1.0, 0.0, 0.0]);
-        let lighting_bind_group = create_lighting_bind_group(&gpu, &lighting);
+        let cam_light = PointLight::new(cam_entity_id, Vector3::new(1.0, 1.0, 1.0));
+        let point_light_collection = PointLightCollection::new("point_light_collection", vec![cam_light], &gpu);
+        let point_light_bind_group = point_light_collection.create_bind_group("point_light_collection_bind_group", &gpu);
 
         // render_pipeline
         let pipeline = GpuPipeline::create_default(
@@ -142,7 +143,7 @@ impl<'a> State<'a> {
             &[
                 &texture_bind_group_layout,
                 &camera_bind_group.layout(),
-                &lighting_bind_group.layout(),
+                &point_light_bind_group.layout(),
             ],
             &[ModelVertex::desc(), MeshInstanceData::desc()],
             &shader,
@@ -169,12 +170,12 @@ impl<'a> State<'a> {
         let pipeline_id = renderer.add_pipelines(vec![pipeline])[0];
         let camera_bind_group_id = renderer.add_global_bind_groups(vec![camera_bind_group])[0];
         let lighting_bind_group_id =
-            renderer.add_lighting_bind_groups(vec![lighting_bind_group])[0];
+            renderer.add_lighting_bind_groups(vec![point_light_bind_group])[0];
 
         // scene
         let mut scene = Scene::new(
             camera,
-            vec![lighting],
+            point_light_collection,
             pipeline_id,
             camera_bind_group_id,
             lighting_bind_group_id,
@@ -216,17 +217,6 @@ impl<'a> State<'a> {
         let now = Instant::now();
         let delta_time = now - self.last_frame_update;
         self.last_frame_update = now;
-
-        for light in self.scene.lights() {
-            light.update(|uniform| {
-                let old_position: cgmath::Vector3<_> = uniform.position.into();
-                uniform.position =
-                    (cgmath::Quaternion::from_axis_angle((0.0, 1.0, 0.0).into(), cgmath::Deg(1.0))
-                        * old_position)
-                        .into();
-            });
-        }
-
         self.scene.update_and_write_buffers(&self.world, &self.gpu);
         self.freecam.update(&self.input_state, &mut self.world, delta_time.as_secs_f32()).unwrap();
     }
