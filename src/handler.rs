@@ -105,6 +105,10 @@ impl ApplicationHandler<State<'static>> for App<'static> {
             Some(canvas) => canvas,
             None => return,
         };
+        let consumed_by_debug_menu = state.handle_window_event_for_debug_menu(&event);
+        if consumed_by_debug_menu {
+            return;
+        }
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => state.resize(size.width, size.height),

@@ -21,6 +21,9 @@ slotmap = "1.0.7"
 thiserror = "2.0.17"
 kira = "0.11.0"
 rustc-hash = "2.1.1"
+egui-wgpu = { version = "0.33.3", features = ["winit"] }
+egui = "0.33.3"
+egui-winit = "0.33.3"
 
 [dependencies.image]
 version = "0.24"

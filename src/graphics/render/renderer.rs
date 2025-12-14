@@ -12,6 +12,7 @@ use crate::{core::world::World, graphics::{
 }};
 use slotmap::{SlotMap, new_key_type};
 use thiserror::Error;
+use wgpu::{CommandEncoder, RenderPass, SurfaceTexture, TextureView};
 
 new_key_type! {
     /// For referencing pipelines in the renderer.
@@ -20,6 +21,12 @@ new_key_type! {
     pub struct GlobalBindGroupId;
     /// For referencing local lighting bind groups in the renderer.
     pub struct LightingBindGroupId;
+}
+
+/// Data for a currently rendering frame.
+struct CurrentFrameData {
+    output: SurfaceTexture,
+    view: TextureView
 }
 
 /// Handles rendering for the entire program.
@@ -34,6 +41,7 @@ pub struct Renderer<'a> {
     pipelines: SlotMap<PipelineId, GpuPipeline>,
     global_bind_groups: SlotMap<GlobalBindGroupId, GpuBindGroup>,
     lighting_bind_groups: SlotMap<LightingBindGroupId, GpuBindGroup>,
+    current_frame: Option<CurrentFrameData>
 }
 
 impl<'a> Renderer<'a> {
@@ -58,6 +66,7 @@ impl<'a> Renderer<'a> {
             pipelines: SlotMap::with_key(),
             global_bind_groups: SlotMap::with_key(),
             lighting_bind_groups: SlotMap::with_key(),
+            current_frame: None
         }
     }
 
@@ -116,6 +125,25 @@ impl<'a> Renderer<'a> {
         self.lighting_bind_groups.get(id)
     }
 
+    /// Begin a frame for rendering.
+    pub fn begin_frame(&mut self) -> Result<(), RenderError> {
+        let output = self.surface.get_current_texture()?;
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        self.current_frame = Some(CurrentFrameData { output, view });
+        Ok(())
+    }
+
+    /// End a frame for rendering by displaying it.
+    pub fn end_frame(&mut self) -> Result<(), RenderError> {
+        if let Some(frame) = self.current_frame.take() {
+            frame.output.present();
+            return Ok(());
+        }
+        Err(RenderError::NoFrameInProgress)
+    }
+
     /// Render the given scene only for the frame.
     ///
     /// If any command fails, rendering stops there and this returns a `RenderError`.
@@ -129,20 +157,19 @@ impl<'a> Renderer<'a> {
         self.instance_buffer.write();
 
         // get the surface, encoder, render pass
-        let output = self.surface.get_current_texture()?;
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let mut encoder =
-            self.gpu
-                .device()
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("render_encoder"),
-                });
+        let frame = match &self.current_frame {
+            Some(frame) => frame,
+            None => return Err(RenderError::NoFrameInProgress)
+        };
+        let mut encoder = self.gpu
+            .device()
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("render_encoder"),
+            });
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("render_pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &view,
+                view: &frame.view,
                 resolve_target: None,
                 depth_slice: None,
                 ops: wgpu::Operations {
@@ -176,13 +203,87 @@ impl<'a> Renderer<'a> {
             }
         }
 
-        // submit the commands and present the output
         drop(render_pass);
         self.gpu.queue().submit(std::iter::once(encoder.finish()));
-        output.present();
-
-        // clear the instance buffer
         self.instance_buffer.clear();
+
+        Ok(())
+    }
+
+    /// Submit some commands to the command encoder.
+    pub fn encode_commands<G>(&mut self, mut encode: G) -> Result<(), RenderError> 
+    where 
+        G: FnMut(&mut CommandEncoder)
+    {
+        if !self.surface_is_configured {
+            return Err(RenderError::UnconfiguredSurface);
+        }
+
+        let mut encoder = self.gpu
+            .device()
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("render_encoder"),
+            });
+        encode(&mut encoder);
+        self.gpu
+            .queue()
+            .submit(std::iter::once(encoder.finish()));
+
+        Ok(())
+    }
+
+    /// Render with a render pass.
+    pub fn render_with_render_pass<F>(&mut self, mut render: F, use_depth: bool) -> Result<(), RenderError> 
+    where 
+        F: FnMut(RenderPass<'_>)
+    {
+        if !self.surface_is_configured {
+            return Err(RenderError::UnconfiguredSurface);
+        }
+
+        // get the surface, encoder, render pass
+        let frame = match &self.current_frame {
+            Some(frame) => frame,
+            None => return Err(RenderError::NoFrameInProgress)
+        };
+        let mut encoder =
+            self.gpu
+                .device()
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("render_encoder"),
+                });
+
+        let depth_stencil_attachment = if use_depth {
+            Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth_texture.view(),
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            })
+        } else {
+            None
+        };
+        let render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("render_pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &frame.view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        
+        render(render_pass);
+        
+        self.gpu.queue().submit(std::iter::once(encoder.finish()));
 
         Ok(())
     }
@@ -263,6 +364,8 @@ impl<'a> Renderer<'a> {
 /// An error from rendering.
 #[derive(Debug, Error)]
 pub enum RenderError {
+    #[error("No frame in progress (tried to end frame when there's no current frame)")]
+    NoFrameInProgress,
     #[error("Pipeline referenced by command {index} not found")]
     PipelineNotFound { index: usize },
     #[error("Global bind group referenced by command {index} not found")]

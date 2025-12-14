@@ -30,6 +30,7 @@ pub struct Model {
 pub struct Material {
     pub name: String,
     pub diffuse_texture: GpuTexture,
+    pub normal_texture: GpuTexture,
     pub bind_group: GpuBindGroup,
 }
 
@@ -81,6 +82,8 @@ pub struct ModelVertex {
     pub position: [f32; 3],
     pub tex_coords: [f32; 2],
     pub normal: [f32; 3],
+    pub tangent: [f32; 3],
+    pub bitangent: [f32; 3]
 }
 
 impl ModelVertex {
@@ -103,6 +106,16 @@ impl ModelVertex {
                 wgpu::VertexAttribute {
                     offset: size_of::<[f32; 5]>() as u64,
                     shader_location: 2,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: size_of::<[f32; 8]>() as wgpu::BufferAddress,
+                    shader_location: 3,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: size_of::<[f32; 11]>() as wgpu::BufferAddress,
+                    shader_location: 4,
                     format: wgpu::VertexFormat::Float32x3,
                 },
             ],

@@ -67,6 +67,8 @@ impl Camera {
 pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
     view: [[f32; 4]; 4],
+    view_position: [f32; 3],
+    _padding: f32
 }
 
 impl CameraUniform {
@@ -75,17 +77,21 @@ impl CameraUniform {
         Self {
             view_proj: Matrix4::identity().into(),
             view: Matrix4::identity().into(),
+            view_position: Vector3::zero().into(),
+            _padding: 0.0
         }
     }
 
     /// Update the uniform for a perspective camera.
     pub fn update_perspective(&mut self, data: &PerspectiveCameraData, entity: &WorldEntity) {
+        self.view_position = entity.transform().position.into();
         self.view = data.build_view_matrix(entity).into();
         self.view_proj = data.build_view_projection_matrix(entity).into();
     }
 
     /// Update the uniform for an ortho camera.
     pub fn update_ortho(&mut self, data: &OrthoCameraData, entity: &WorldEntity) {
+        self.view_position = entity.transform().position.into();
         self.view = data.build_view_matrix(entity).into();
         self.view_proj = data.build_view_projection_matrix(entity).into();
     }

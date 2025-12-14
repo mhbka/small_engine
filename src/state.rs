@@ -1,8 +1,13 @@
 use cgmath::{Quaternion, Rotation3, Vector3, Zero};
-use winit::event::{ElementState, MouseScrollDelta};
+use egui::ViewportId;
+use egui_wgpu::winit::Painter;
+use egui_wgpu::{RenderState, RendererOptions, WgpuConfiguration, WgpuSetup, WgpuSetupExisting};
+use wgpu::rwh::{HasDisplayHandle, HasWindowHandle};
+use winit::event::{ElementState, MouseScrollDelta, WindowEvent};
+use std::num::NonZero;
 use std::sync::Arc;
 use web_time::Instant;
-use wgpu::Backends;
+use wgpu::{Backends, PresentMode, TextureFormat};
 use wgpu::{
     BindGroupLayoutDescriptor, CompareFunction, DepthBiasState, DepthStencilState,
     DeviceDescriptor, ExperimentalFeatures, Features, Instance, InstanceDescriptor, Limits,
@@ -16,7 +21,8 @@ use wasm_bindgen::prelude::*;
 
 use crate::core::entity::spatial_transform::SpatialTransform;
 use crate::core::world::World;
-use crate::example::generated_spaced_entities;
+use crate::debug_menu::DebugMenu;
+use crate::example::{generate_one_big_entity, generated_spaced_entities};
 use crate::graphics::gpu::GpuContext;
 use crate::graphics::gpu::pipeline::GpuPipeline;
 use crate::graphics::gpu::texture::GpuTexture;
@@ -42,7 +48,8 @@ pub struct State<'a> {
     renderer: Renderer<'a>,
     scene: Scene,
     last_frame_update: Instant,
-    freecam: FreecamController
+    freecam: FreecamController,
+    debug_menu: DebugMenu
 }
 
 impl<'a> State<'a> {
@@ -114,6 +121,7 @@ impl<'a> State<'a> {
 
         // scene nodes
         let entities = generated_spaced_entities(&mut world);
+        //let entities = generate_one_big_entity(&mut world);
 
         // camera
         let cam_entity_id = world.add_entity(
@@ -201,6 +209,13 @@ impl<'a> State<'a> {
         // freecam
         let freecam = FreecamController::new(cam_entity_id);
 
+        // debug menu
+        let debug_menu = DebugMenu::new(
+            &gpu, 
+            &window.display_handle().unwrap(), 
+            window.inner_size()
+        );
+
         Ok(Self {
             window,
             input_state,
@@ -209,7 +224,8 @@ impl<'a> State<'a> {
             scene,
             world,
             last_frame_update: Instant::now(),
-            freecam
+            freecam,
+            debug_menu
         })
     }
 
@@ -223,16 +239,41 @@ impl<'a> State<'a> {
 
     pub fn resize(&mut self, width: u32, height: u32) {
         self.renderer.resize(width, height);
+        // self.debug_menu.resize(width, height);
     }
 
     pub fn render(&mut self) -> Result<(), SurfaceError> {
         self.window.request_redraw();
-        self.renderer.render_scene_for_frame(&self.scene, &self.world).unwrap();
+
+        self.renderer
+            .begin_frame()
+            .unwrap();
+        
+        self.renderer
+            .render_scene_for_frame(&self.scene, &self.world)
+            .unwrap();
+
+        let mut primitives = vec![];
+        self.renderer
+            .encode_commands(|encoder| primitives = self.debug_menu.setup_render(&self.window, encoder, &self.gpu))
+            .unwrap();
+        self.renderer
+            .render_with_render_pass(|pass| self.debug_menu.render(&primitives, pass), false)
+            .unwrap();
+
+        self.renderer
+            .end_frame()
+            .unwrap();
+
         Ok(())
     }
 
     pub fn reset_for_frame(&mut self) {
         self.input_state.begin_frame();
+    }
+
+    pub fn handle_window_event_for_debug_menu(&mut self, event: &WindowEvent) -> bool {
+        self.debug_menu.handle_input(&self.window, event)
     }
 
     pub fn handle_key(&mut self, event_loop: &ActiveEventLoop, key_code: KeyCode, key_state: ElementState) {
