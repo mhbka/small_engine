@@ -33,13 +33,15 @@ use crate::graphics::render::renderer::Renderer;
 use crate::graphics::scene::Scene;
 use crate::graphics::scene::instance_buffer::MeshInstanceData;
 use crate::graphics::scene::light::point::{PointLight, PointLightCollection};
+use crate::hdr::HdrPipeline;
 use crate::input::state::InputState;
 use crate::resources;
 use crate::systems::camera::{Camera, CameraType, create_camera_bind_group};
 use crate::systems::camera::perspective::PerspectiveCamera;
 use crate::systems::controller::freecam::FreecamController;
+use crate::debug_state::DebugState;
 
-// This will store the state of our game
+// The state of the game.
 pub struct State<'a> {
     pub window: Arc<Window>,
     input_state: InputState,
@@ -49,7 +51,8 @@ pub struct State<'a> {
     scene: Scene,
     last_frame_update: Instant,
     freecam: FreecamController,
-    debug_menu: DebugMenu
+    debug_menu: DebugMenu,
+    debug_state: DebugState,
 }
 
 impl<'a> State<'a> {
@@ -143,11 +146,10 @@ impl<'a> State<'a> {
         let point_light_collection = PointLightCollection::new("point_light_collection", vec![cam_light], &gpu);
         let point_light_bind_group = point_light_collection.create_bind_group("point_light_collection_bind_group", &gpu);
 
-        // render_pipeline
+        // render pipeline
         let pipeline = GpuPipeline::create_default(
             "basic_pipeline",
             &gpu,
-            &config,
             &[
                 &texture_bind_group_layout,
                 &camera_bind_group.layout(),
@@ -163,6 +165,8 @@ impl<'a> State<'a> {
                 stencil: StencilState::default(),
                 bias: DepthBiasState::default(),
             }),
+            wgpu::PrimitiveTopology::TriangleList,
+            HdrPipeline::COLOR_FORMAT
         );
 
         // asset store
@@ -215,6 +219,7 @@ impl<'a> State<'a> {
             &window.display_handle().unwrap(), 
             window.inner_size()
         );
+        let debug_state = DebugState::new();
 
         Ok(Self {
             window,
@@ -225,7 +230,8 @@ impl<'a> State<'a> {
             world,
             last_frame_update: Instant::now(),
             freecam,
-            debug_menu
+            debug_menu,
+            debug_state,
         })
     }
 
@@ -235,11 +241,14 @@ impl<'a> State<'a> {
         self.last_frame_update = now;
         self.scene.update_and_write_buffers(&self.world, &self.gpu);
         self.freecam.update(&self.input_state, &mut self.world, delta_time.as_secs_f32()).unwrap();
+        
+        let cam_pos = self.freecam.pos(&self.world);
+        self.debug_state.update(cam_pos);
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
         self.renderer.resize(width, height);
-        // self.debug_menu.resize(width, height);
+        self.debug_menu.resize(width, height);
     }
 
     pub fn render(&mut self) -> Result<(), SurfaceError> {
@@ -255,7 +264,7 @@ impl<'a> State<'a> {
 
         let mut primitives = vec![];
         self.renderer
-            .encode_commands(|encoder| primitives = self.debug_menu.setup_render(&self.window, encoder, &self.gpu))
+            .encode_commands(|encoder| primitives = self.debug_menu.setup_render(&self.window, encoder, &mut self.debug_state, &self.gpu))
             .unwrap();
         self.renderer
             .render_with_render_pass(|pass| self.debug_menu.render(&primitives, pass), false)

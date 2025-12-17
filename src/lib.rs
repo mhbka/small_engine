@@ -11,6 +11,8 @@ pub mod core;
 pub mod systems;
 pub mod example;
 pub mod debug_menu;
+pub mod debug_state;
+pub mod hdr;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;

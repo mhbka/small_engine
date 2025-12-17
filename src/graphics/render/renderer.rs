@@ -9,7 +9,7 @@ use crate::{core::world::World, graphics::{
         commands::{DrawCommand, MeshRenderCommand, RenderCommand},
     },
     scene::{Scene, SceneError, instance_buffer::InstanceBuffer},
-}};
+}, hdr::HdrPipeline};
 use slotmap::{SlotMap, new_key_type};
 use thiserror::Error;
 use wgpu::{CommandEncoder, RenderPass, SurfaceTexture, TextureView};
@@ -38,6 +38,7 @@ pub struct Renderer<'a> {
     depth_texture: GpuTexture,
     instance_buffer: InstanceBuffer,
     assets: AssetStore,
+    hdr: HdrPipeline,
     pipelines: SlotMap<PipelineId, GpuPipeline>,
     global_bind_groups: SlotMap<GlobalBindGroupId, GpuBindGroup>,
     lighting_bind_groups: SlotMap<LightingBindGroupId, GpuBindGroup>,
@@ -55,6 +56,7 @@ impl<'a> Renderer<'a> {
         let depth_texture =
             GpuTexture::create_depth_texture(&gpu, "depth_texture", &surface_config);
         let instance_buffer = InstanceBuffer::new(gpu.clone(), "instance_buffer".into());
+        let hdr = HdrPipeline::new(&gpu, &surface_config);
         Self {
             gpu,
             surface,
@@ -63,6 +65,7 @@ impl<'a> Renderer<'a> {
             depth_texture,
             instance_buffer,
             assets,
+            hdr,
             pipelines: SlotMap::with_key(),
             global_bind_groups: SlotMap::with_key(),
             lighting_bind_groups: SlotMap::with_key(),
@@ -80,6 +83,7 @@ impl<'a> Renderer<'a> {
             self.surface_is_configured = true;
             self.depth_texture =
                 GpuTexture::create_depth_texture(&self.gpu, "depth_texture", &self.surface_config);
+            self.hdr.resize(&self.gpu, width, height);
         }
     }
 
@@ -169,7 +173,7 @@ impl<'a> Renderer<'a> {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("render_pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &frame.view,
+                view: &self.hdr.view(),
                 resolve_target: None,
                 depth_slice: None,
                 ops: wgpu::Operations {
@@ -204,9 +208,9 @@ impl<'a> Renderer<'a> {
         }
 
         drop(render_pass);
+        self.hdr.process(&mut encoder, &frame.view);
         self.gpu.queue().submit(std::iter::once(encoder.finish()));
         self.instance_buffer.clear();
-
         Ok(())
     }
 
@@ -219,16 +223,23 @@ impl<'a> Renderer<'a> {
             return Err(RenderError::UnconfiguredSurface);
         }
 
+        let frame = match &self.current_frame {
+            Some(frame) => frame,
+            None => return Err(RenderError::NoFrameInProgress)
+        };
+
         let mut encoder = self.gpu
             .device()
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("render_encoder"),
             });
+
         encode(&mut encoder);
+
+        self.hdr.process(&mut encoder, &frame.view);
         self.gpu
             .queue()
             .submit(std::iter::once(encoder.finish()));
-
         Ok(())
     }
 
@@ -268,7 +279,7 @@ impl<'a> Renderer<'a> {
         let render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("render_pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &frame.view,
+                view: self.hdr.view(),
                 resolve_target: None,
                 depth_slice: None,
                 ops: wgpu::Operations {
@@ -282,9 +293,9 @@ impl<'a> Renderer<'a> {
         });
         
         render(render_pass);
-        
-        self.gpu.queue().submit(std::iter::once(encoder.finish()));
 
+        self.hdr.process(&mut encoder, &frame.view);
+        self.gpu.queue().submit(std::iter::once(encoder.finish()));
         Ok(())
     }
 

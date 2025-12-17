@@ -1060,38 +1060,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "graphics_project"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytemuck",
- "cgmath",
- "console_error_panic_hook",
- "console_log",
- "egui",
- "egui-wgpu",
- "egui-winit",
- "env_logger",
- "fs_extra",
- "glob",
- "image 0.24.9",
- "kira",
- "log",
- "pollster",
- "reqwest",
- "rustc-hash 2.1.1",
- "slotmap",
- "thiserror 2.0.17",
- "tobj",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "web-time",
- "wgpu",
- "winit",
-]
-
-[[package]]
 name = "h2"
 version = "0.3.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2698,6 +2666,38 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dbff4acf519f630b3a3ddcfaea6c06b42174d9a44bc70c620e9ed1649d58b82a"
 dependencies = [
  "version_check",
+]
+
+[[package]]
+name = "small_engine"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "cgmath",
+ "console_error_panic_hook",
+ "console_log",
+ "egui",
+ "egui-wgpu",
+ "egui-winit",
+ "env_logger",
+ "fs_extra",
+ "glob",
+ "image 0.24.9",
+ "kira",
+ "log",
+ "pollster",
+ "reqwest",
+ "rustc-hash 2.1.1",
+ "slotmap",
+ "thiserror 2.0.17",
+ "tobj",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "web-time",
+ "wgpu",
+ "winit",
 ]
 
 [[package]]

@@ -99,10 +99,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let object_color = textureSample(diffuse_texture, diffuse_sampler, in.tex_coords);
     let object_normal = textureSample(normal_texture, normal_sampler, in.tex_coords);
     
-    // Transform positions to tangent space
-    let tangent_position = tangent_matrix * in.world_position;
-    let tangent_view_position = tangent_matrix * camera.view_position;
-    
     // Ambient lighting
     let ambient_strength = 0.0;
     let ambient_color_base = vec3<f32>(1.0, 1.0, 1.0);
@@ -116,22 +112,23 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     for (var i = 0u; i < point_light_count; i++) {
         let light = point_lights[i];
         
-        // Transform light position to tangent space
-        let tangent_light_position = tangent_matrix * light.position;
+        let world_light_dir = light.position - in.world_position;
+        let world_view_dir = camera.view_position - in.world_position;
         
-        let light_dir = normalize(tangent_light_position - tangent_position);
-        let view_dir = normalize(tangent_view_position - tangent_position);
-        let half_dir = normalize(view_dir + light_dir);
+        let tangent_light_dir = normalize(tangent_matrix * world_light_dir);
+        let tangent_view_dir = normalize(tangent_matrix * world_view_dir);
+        let tangent_half_dir = normalize(tangent_view_dir + tangent_light_dir);
 
         // Diffuse
-        let diffuse_strength = max(dot(tangent_normal, light_dir), 0.0);
+        let diffuse_strength = max(dot(tangent_normal, tangent_light_dir), 0.0);
         let diffuse_color = light.color * diffuse_strength;
             
         // Specular
-        let spec_strength = pow(max(dot(tangent_normal, half_dir), 0.0), 64.0);
+        let spec_strength = pow(max(dot(tangent_normal, tangent_half_dir), 0.0), 64.0);
         let spec_color = light.color * spec_strength;
 
-        result += (spec_color) * object_color.xyz;
+        result += diffuse_color * object_color.xyz;
+        result += spec_color;
     }
 
     return vec4<f32>(result, object_color.a);

@@ -1,9 +1,16 @@
-use egui::{Area, ClippedPrimitive, Id, RawInput, Ui, ViewportId};
+use egui::{Area, ClippedPrimitive, Grid, Id, RawInput, Ui, UiBuilder, ViewportId};
 use egui_wgpu::{RendererOptions, ScreenDescriptor};
 use wgpu::{Adapter, CommandEncoder, Instance, PresentMode, RenderPass, Surface, TextureFormat, TextureView, rwh::{DisplayHandle, WindowHandle}};
 use winit::{dpi::PhysicalSize, event::WindowEvent, window::Window};
-use crate::graphics::gpu::GpuContext;
+use crate::{graphics::gpu::GpuContext, hdr::HdrPipeline};
 
+/// Represents the data of a debug menu.
+pub trait DebugMenuData {
+    /// Render the data, and possibly mutate the data based on interactions.
+    fn ui(&mut self, ui: &mut Ui);
+}
+
+/// Represents the debug menu.
 pub struct DebugMenu {
     renderer: egui_wgpu::Renderer,
     state: egui_winit::State,
@@ -25,7 +32,7 @@ impl DebugMenu {
         };
         let renderer = egui_wgpu::Renderer::new(
             gpu.device(), 
-            TextureFormat::Bgra8UnormSrgb, 
+            HdrPipeline::COLOR_FORMAT, 
             renderer_options
         );
         let state = egui_winit::State::new(
@@ -61,14 +68,20 @@ impl DebugMenu {
     }
 
     /// Setup for the render, returning the primitives required for rendering.
-    pub fn setup_render(&mut self, window: &Window, encoder: &mut CommandEncoder, gpu: &GpuContext) -> Vec<ClippedPrimitive> {
+    pub fn setup_render(
+        &mut self, 
+        window: &Window, 
+        encoder: &mut CommandEncoder, 
+        data: &mut impl DebugMenuData,
+        gpu: &GpuContext
+    ) -> Vec<ClippedPrimitive> {
         let input = self.state.take_egui_input(window);
         let output = self.state.egui_ctx().run(input, |ctx| {
-            // TODO: the menu
-            let ui = Area::new(Id::new("main_menu"))
+            let ui = egui::Window::new("Debug Menu")
                 .current_pos([0.0, 0.0])
+                .default_size([100.0, 100.0])
                 .show(ctx, |ui| {
-                    ui.label("Debug Menu")
+                    self.ui(ui, data);
                 });
         });
         let primitives = self.state
@@ -101,5 +114,17 @@ impl DebugMenu {
             &primitives,
             &self.screen_descriptor 
         );
+    }
+
+    /// Build the menu UI.
+    fn ui(&self, ui: &mut Ui, data: &mut impl DebugMenuData) {
+        ui.scope_builder(UiBuilder::new(), |ui| {
+            Grid::new("debug_menu_grid")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    data.ui(ui)
+                })
+        });
     }
 }

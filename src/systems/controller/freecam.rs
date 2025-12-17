@@ -13,12 +13,24 @@ pub struct FreecamController {
 }
 
 impl FreecamController {
+    /// Create a controller.
     pub fn new(entity: WorldEntityId) -> Self {
         Self {
             entity,
             enabled: true
         }
     } 
+
+    /// Get the current position.
+    /// 
+    /// Panics if the linked entity is not found.
+    pub fn pos(&self, world: &World) -> Vector3<f32> {
+        world
+            .entity(self.entity)
+            .expect("Freecam controller couldn't find the entity")
+            .transform()
+            .position
+    }
 
     /// Update the entity for this freecam controller.
     pub fn update(&self, input: &InputState, world: &mut World, delta_time: f32) -> Result<(), &'static str> {

@@ -1,3 +1,3 @@
 fn main() {
-    graphics_project::run().unwrap();
+    small_engine::run().unwrap();
 }

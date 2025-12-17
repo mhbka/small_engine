@@ -11,12 +11,13 @@ impl GpuPipeline {
     pub fn create_default(
         label: &str,
         gpu: &GpuContext,
-        surface_config: &wgpu::SurfaceConfiguration,
         bind_group_layouts: &[&wgpu::BindGroupLayout],
         vertex_buffer_layouts: &[wgpu::VertexBufferLayout],
         vertex_shader: &wgpu::ShaderModule,
         fragment_shader: &wgpu::ShaderModule,
         depth_stencil: Option<wgpu::DepthStencilState>,
+        primitive_topology: wgpu::PrimitiveTopology,
+        color_format: wgpu::TextureFormat
     ) -> Self {
         let device = gpu.device();
 
@@ -30,12 +31,12 @@ impl GpuPipeline {
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: vertex_shader,
-                entry_point: None, // if we have >1 vertex shader, I think we must specify this?
+                entry_point: None, 
                 buffers: vertex_buffer_layouts,
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
+                topology: primitive_topology,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
                 cull_mode: Some(wgpu::Face::Back),
@@ -45,9 +46,9 @@ impl GpuPipeline {
             },
             fragment: Some(wgpu::FragmentState {
                 module: fragment_shader,
-                entry_point: None, // if we have >1 fragment shader, I think we must specify this?
+                entry_point: None, 
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: surface_config.format,
+                    format: color_format,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
