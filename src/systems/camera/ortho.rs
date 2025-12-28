@@ -124,9 +124,7 @@ impl OrthoCameraData {
         rotation * translation
     }
 
-    pub fn build_view_projection_matrix(&self, entity: &WorldEntity) -> Matrix4<f32> {
-        let view = self.build_view_matrix(entity);
-
+    pub fn build_projection_matrix(&self) -> Matrix4<f32> {
         let (mut left, mut right) = if self.origin_at_top_left {
             (0.0, self.width)
         } else {
@@ -150,8 +148,8 @@ impl OrthoCameraData {
         right = right / self.zoom;
         top = top / self.zoom;
         bottom = bottom / self.zoom;
-
-        let proj = OPENGL_TO_WGPU_MATRIX * ortho(left, right, bottom, top, self.near, self.far);
-        return proj * view;
+        
+        // OPENGL_TO_WGPU_MATRIX * 
+        ortho(left, right, bottom, top, self.near, self.far)
     }
 }

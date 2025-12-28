@@ -24,18 +24,23 @@ use crate::core::world::World;
 use crate::debug_menu::DebugMenu;
 use crate::example::{generate_one_big_entity, generated_spaced_entities};
 use crate::graphics::gpu::GpuContext;
+use crate::graphics::gpu::bind_group::GpuBindGroup;
 use crate::graphics::gpu::pipeline::GpuPipeline;
 use crate::graphics::gpu::texture::GpuTexture;
 use crate::graphics::render::assets::AssetStore;
+use crate::graphics::render::hdr::HdrPipeline;
 use crate::graphics::render::renderable::model::MeshInstance;
 use crate::graphics::render::renderable::model::ModelVertex;
+use crate::graphics::render::renderable::skybox::SkyBox;
 use crate::graphics::render::renderer::Renderer;
 use crate::graphics::scene::Scene;
 use crate::graphics::scene::instance_buffer::MeshInstanceData;
 use crate::graphics::scene::light::point::{PointLight, PointLightCollection};
-use crate::hdr::HdrPipeline;
+use crate::graphics::textures::depth::DepthTexture;
+use crate::graphics::textures::standard::DIFFUSE_BIND_GROUP_LAYOUT_ENTRIES;
 use crate::input::state::InputState;
 use crate::resources;
+use crate::resources::hdr::HdrLoader;
 use crate::systems::camera::{Camera, CameraType, create_camera_bind_group};
 use crate::systems::camera::perspective::PerspectiveCamera;
 use crate::systems::controller::freecam::FreecamController;
@@ -80,13 +85,17 @@ impl<'a> State<'a> {
         let (device, queue) = adapter
             .request_device(&DeviceDescriptor {
                 label: None,
-                required_features: Features::empty(),
+                // required_features: Features::none(), TODO: changed to below for compute shaders - figure out a feature gate for this
+                required_features: Features::all_webgpu_mask(),
                 experimental_features: ExperimentalFeatures::disabled(),
+                /* TODO: changed to below for compute shaders - figure out a feature gate for this
                 required_limits: if cfg!(target_arch = "wasm32") {
                     Limits::downlevel_webgl2_defaults()
                 } else {
-                    Limits::default()
+                    Limits::downlevel_defaults()
                 },
+                */
+                required_limits: Limits::downlevel_defaults(),
                 memory_hints: Default::default(),
                 trace: Trace::Off,
             })
@@ -112,7 +121,7 @@ impl<'a> State<'a> {
         };
         let texture_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                entries: &GpuTexture::DIFFUSE_BIND_GROUP_LAYOUT_ENTRIES,
+                entries: &DIFFUSE_BIND_GROUP_LAYOUT_ENTRIES,
                 label: Some("texture_bind_group_layout"),
             });
 
@@ -159,7 +168,7 @@ impl<'a> State<'a> {
             &shader,
             &shader,
             Some(DepthStencilState {
-                format: GpuTexture::DEPTH_FORMAT,
+                format: DepthTexture::DEPTH_FORMAT,
                 depth_write_enabled: true,
                 depth_compare: CompareFunction::Less,
                 stencil: StencilState::default(),
@@ -169,28 +178,88 @@ impl<'a> State<'a> {
             HdrPipeline::COLOR_FORMAT
         );
 
-        // asset store
-        let mut assets = AssetStore::new();
+        // renderer
+        let mut renderer = Renderer::new(gpu.clone(), surface, config, AssetStore::new());
+        let pipeline_id = renderer.add_pipelines(vec![pipeline])[0];
 
         // object
-        let obj_model = resources::load_model("cube.obj", &gpu, &mut assets)
+        let obj_model = resources::general::load_model("cube.obj", &gpu, &mut renderer)
             .await
             .unwrap();
 
-        // renderer
-        let mut renderer = Renderer::new(gpu.clone(), surface, config, assets);
-        let pipeline_id = renderer.add_pipelines(vec![pipeline])[0];
-        let camera_bind_group_id = renderer.add_global_bind_groups(vec![camera_bind_group])[0];
-        let lighting_bind_group_id =
-            renderer.add_lighting_bind_groups(vec![point_light_bind_group])[0];
+        // skybox
+        let hdr_loader = HdrLoader::new(&gpu);
+        let sky_texture_bytes = resources::general::load_binary("pure-sky.hdr").await?;
+        let sky_texture = hdr_loader.from_equirect_bytes(&gpu, &sky_texture_bytes, 1080, "Sky Texture")?;
+        let sky_bind_group = GpuBindGroup::create_default(
+            "sky_bind_group", 
+            &gpu, 
+            &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::Cube,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                    count: None,
+                },
+            ], 
+            &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(sky_texture.inner().view()),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(sky_texture.inner().sampler()),
+                },
+            ]
+        );
+        let shader = device.create_shader_module(wgpu::include_wgsl!("sky.wgsl")); 
+        let depth_stencil = wgpu::DepthStencilState {
+            format: DepthTexture::DEPTH_FORMAT,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::LessEqual,
+            stencil: Default::default(),
+            bias: Default::default(),
+        };
+        let sky_pipeline = GpuPipeline::create_default(
+            "skybox_pipeline",
+            &gpu,
+            &[camera_bind_group.layout(), sky_bind_group.layout()],
+            &[],
+            &shader,
+            &shader,
+            Some(depth_stencil),
+            wgpu::PrimitiveTopology::TriangleList,
+            HdrPipeline::COLOR_FORMAT,
+        );
+        let sky_pipeline_id = renderer.add_pipelines(vec![sky_pipeline])[0];
+        let skybox = SkyBox::new("skybox".into(), sky_texture);
+  
 
         // scene
+        let bind_group_ids = renderer.add_bind_groups(vec![camera_bind_group, point_light_bind_group, sky_bind_group]);
+        let camera_bind_group_id = bind_group_ids[0];
+        let lighting_bind_group_id = bind_group_ids[1];
+        let sky_bind_group_id = bind_group_ids[2]; 
         let mut scene = Scene::new(
             camera,
             point_light_collection,
             pipeline_id,
             camera_bind_group_id,
             lighting_bind_group_id,
+            skybox,
+            sky_pipeline_id,
+            sky_bind_group_id
         );
 
         // scene nodes + mesh instances

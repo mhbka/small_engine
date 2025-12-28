@@ -94,10 +94,8 @@ impl PerspectiveCameraData {
         Matrix4::look_at_rh(position, forward, up)
     }
 
-    pub(super) fn build_view_projection_matrix(&self, entity: &WorldEntity) -> Matrix4<f32> {
-        let view = self.build_view_matrix(entity);
-        let proj =
-            OPENGL_TO_WGPU_MATRIX * perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
-        return proj * view;
+    pub(super) fn build_projection_matrix(&self) -> Matrix4<f32> {
+        // OPENGL_TO_WGPU_MATRIX * perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar)
+        perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar)
     }
 }

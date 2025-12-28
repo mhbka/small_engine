@@ -7,10 +7,7 @@ use thiserror::Error;
 use crate::{core::world::{World, WorldEntityId}, graphics::{
     gpu::GpuContext,
     render::{
-        assets::{AssetStore, MaterialId, MeshId},
-        commands::RenderCommand,
-        renderable::{model::MeshInstance, sprite::SpriteInstance},
-        renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId},
+        assets::{AssetStore, MaterialId, MeshId}, commands::RenderCommandBuffer, renderable::{model::MeshInstance, skybox::SkyBox, sprite::SpriteInstance}, renderer::{BindGroupId, PipelineId}
     },
     scene::{
         instance_buffer::InstanceBuffer, light::point::{PointLight, PointLightCollection}, raw_spatial_transform::RawSpatialTransform
@@ -33,8 +30,11 @@ pub struct Scene {
     camera: Camera,
     point_lights: PointLightCollection,
     pipeline: PipelineId,
-    global_bind_group: GlobalBindGroupId,
-    lighting_bind_group: LightingBindGroupId,
+    camera_bind_group: BindGroupId,
+    lighting_bind_group: BindGroupId,
+    skybox: SkyBox,
+    sky_pipeline: PipelineId,
+    sky_bind_group: BindGroupId,
 }
 
 impl Scene {
@@ -43,8 +43,11 @@ impl Scene {
         camera: Camera,
         point_lights: PointLightCollection,
         pipeline: PipelineId,
-        global_bind_group: GlobalBindGroupId,
-        lighting_bind_group: LightingBindGroupId,
+        camera_bind_group: BindGroupId,
+        lighting_bind_group: BindGroupId,
+        skybox: SkyBox,
+        sky_pipeline: PipelineId,
+        sky_bind_group: BindGroupId,
     ) -> Self {
         Self {
             mesh_instances: SlotMap::with_key(),
@@ -53,7 +56,10 @@ impl Scene {
             camera,
             point_lights,
             pipeline,
-            global_bind_group,
+            skybox,
+            sky_pipeline,
+            sky_bind_group,
+            camera_bind_group,
             lighting_bind_group,
         }
     }
@@ -67,8 +73,8 @@ impl Scene {
         world: &World,
         assets: &'a AssetStore,
         instance_buffer: &mut InstanceBuffer,
-    ) -> Result<Vec<RenderCommand<'a>>, SceneError> {
-        let mut commands = Vec::new();
+    ) -> Result<RenderCommandBuffer<'a>, SceneError> {
+        let mut mesh_commands = Vec::new();
 
         for (mesh_id, mesh_instances) in &self.instances_by_mesh {
             let mesh = assets
@@ -93,17 +99,25 @@ impl Scene {
                 })
                 .collect::<Result<_, SceneError>>()?;
             let instance_buffer_range = instance_buffer.add(instance_transforms, mesh_id);
-            let mesh_commands = mesh.to_render_command(
+            let command = mesh.to_render_command(
                 mesh_id,
                 material,
                 self.pipeline,
                 instance_buffer_range,
-                self.global_bind_group,
+                self.camera_bind_group,
                 self.lighting_bind_group,
             );
-            commands.push(mesh_commands);
+            mesh_commands.push(command);
         }
-
+        let sky_command = self.skybox.to_render_command(
+            self.sky_pipeline,
+            self.sky_bind_group,
+            self.camera_bind_group
+        );
+        let commands = RenderCommandBuffer {
+            mesh: mesh_commands,
+            skybox: Some(sky_command)
+        };
         Ok(commands)
     }
 

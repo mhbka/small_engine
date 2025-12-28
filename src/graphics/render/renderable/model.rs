@@ -1,10 +1,11 @@
 use crate::core::world::WorldEntityId;
+use crate::graphics::textures::standard::StandardTexture;
 use crate::graphics::{
     gpu::{bind_group::GpuBindGroup, buffer::GpuBuffer, texture::GpuTexture},
     render::{
         assets::{MaterialId, MeshId},
-        commands::{DrawCommand, MeshRenderCommand, RenderCommand},
-        renderer::{GlobalBindGroupId, LightingBindGroupId, PipelineId},
+        commands::{DrawCommand, MeshRenderCommand},
+        renderer::{BindGroupId, PipelineId},
     },
     scene::instance_buffer::InstanceBufferRange,
 };
@@ -26,12 +27,12 @@ pub struct Model {
     pub materials: Vec<MaterialId>,
 }
 
-/// A material.
+/// A material; the texture(s) for meshes.
 pub struct Material {
     pub name: String,
-    pub diffuse_texture: GpuTexture,
-    pub normal_texture: GpuTexture,
-    pub bind_group: GpuBindGroup,
+    pub diffuse_texture: StandardTexture,
+    pub normal_texture: StandardTexture,
+    pub bind_group: BindGroupId,
 }
 
 /// A mesh; the actual thing rendered.
@@ -51,16 +52,16 @@ impl Mesh {
         material: &Material,
         pipeline: PipelineId,
         instance_buffer_range: InstanceBufferRange,
-        global_bind_group: GlobalBindGroupId,
-        lighting_bind_group: LightingBindGroupId,
-    ) -> RenderCommand<'buf> {
-        let command = MeshRenderCommand {
+        camera_bind_group: BindGroupId,
+        lighting_bind_group: BindGroupId,
+    ) -> MeshRenderCommand<'buf> {
+        MeshRenderCommand {
+            name: &self.name,
             mesh: id,
             pipeline,
-            global_bind_group,
+            camera_bind_group,
             lighting_bind_group,
-            object_bind_group: material.bind_group.clone(),
-            extra_bind_groups: vec![],
+            material_bind_group: material.bind_group,
             vertex_buffer: self.vertex_buffer.handle().slice(..),
             instance_buffer_range: instance_buffer_range,
             index_buffer: self.index_buffer.handle().slice(..),
@@ -69,9 +70,7 @@ impl Mesh {
                 instances: 0..(instance_buffer_range.end - instance_buffer_range.start) as u32,
                 indices: 0..self.num_elements,
             },
-        };
-
-        RenderCommand::Mesh(command)
+        }
     }
 }
 

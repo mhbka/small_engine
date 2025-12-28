@@ -2,7 +2,7 @@ use egui::{Area, ClippedPrimitive, Grid, Id, RawInput, Ui, UiBuilder, ViewportId
 use egui_wgpu::{RendererOptions, ScreenDescriptor};
 use wgpu::{Adapter, CommandEncoder, Instance, PresentMode, RenderPass, Surface, TextureFormat, TextureView, rwh::{DisplayHandle, WindowHandle}};
 use winit::{dpi::PhysicalSize, event::WindowEvent, window::Window};
-use crate::{graphics::gpu::GpuContext, hdr::HdrPipeline};
+use crate::graphics::{gpu::GpuContext, render::hdr::HdrPipeline};
 
 /// Represents the data of a debug menu.
 pub trait DebugMenuData {

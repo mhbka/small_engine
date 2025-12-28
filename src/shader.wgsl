@@ -1,7 +1,10 @@
 struct CameraUniform {
-    view_proj: mat4x4<f32>,
+    view_pos: vec4<f32>,
     view: mat4x4<f32>,
-    view_position: vec3<f32>
+    view_position: vec4<f32>,
+    view_proj: mat4x4<f32>,
+    inv_proj: mat4x4<f32>,
+    inv_view: mat4x4<f32>,
 }
 
 @group(1) @binding(0)
@@ -111,9 +114,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // Calculate lighting for each point light
     for (var i = 0u; i < point_light_count; i++) {
         let light = point_lights[i];
+        let view_pos = camera.view_position.xyz;
         
         let world_light_dir = light.position - in.world_position;
-        let world_view_dir = camera.view_position - in.world_position;
+        let world_view_dir = view_pos - in.world_position;
         
         let tangent_light_dir = normalize(tangent_matrix * world_light_dir);
         let tangent_view_dir = normalize(tangent_matrix * world_view_dir);

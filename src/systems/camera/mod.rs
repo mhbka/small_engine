@@ -61,14 +61,16 @@ impl Camera {
     }
 }
 
-/// The camera uniform, ie the actual matrix representing the camera.
+/// The camera uniform, ie the actual matrix representing the camera in the shader.
 #[repr(C)]
 #[derive(Debug, Copy, Clone, NoUninit)]
 pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
     view: [[f32; 4]; 4],
     view_position: [f32; 3],
-    _padding: f32
+    _padding: f32,
+    inverse_proj: [[f32; 4]; 4],
+    inverse_view: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
@@ -78,22 +80,34 @@ impl CameraUniform {
             view_proj: Matrix4::identity().into(),
             view: Matrix4::identity().into(),
             view_position: Vector3::zero().into(),
+            inverse_proj: Matrix4::identity().into(),
+            inverse_view: Matrix4::identity().into(),
             _padding: 0.0
         }
     }
 
     /// Update the uniform for a perspective camera.
     pub fn update_perspective(&mut self, data: &PerspectiveCameraData, entity: &WorldEntity) {
+        let view = data.build_view_matrix(entity);
+        let proj = data.build_projection_matrix();
+        let view_proj = proj * view;
+
         self.view_position = entity.transform().position.into();
-        self.view = data.build_view_matrix(entity).into();
-        self.view_proj = data.build_view_projection_matrix(entity).into();
+        self.view = view.into();
+        self.view_proj = view_proj.into();
+        self.inverse_proj = proj.invert().unwrap().into();
     }
 
     /// Update the uniform for an ortho camera.
     pub fn update_ortho(&mut self, data: &OrthoCameraData, entity: &WorldEntity) {
+        let view = data.build_view_matrix(entity);
+        let proj = data.build_projection_matrix();
+        let view_proj = proj * view;
+
         self.view_position = entity.transform().position.into();
-        self.view = data.build_view_matrix(entity).into();
-        self.view_proj = data.build_view_projection_matrix(entity).into();
+        self.view = view.into();
+        self.view_proj = view_proj.into();
+        self.inverse_proj = proj.invert().unwrap().into();
     }
 }
 
