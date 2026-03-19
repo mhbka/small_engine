@@ -7,7 +7,7 @@ use thiserror::Error;
 use crate::{core::world::{World, WorldEntityId}, graphics::{
     gpu::GpuContext,
     render::{
-        assets::{AssetStore, MaterialId, MeshId}, commands::RenderCommandBuffer, renderable::{model::MeshInstance, skybox::SkyBox, sprite::SpriteInstance}, renderer::{BindGroupId, PipelineId}
+        assets::{AssetStore, MaterialId, MeshId, SpriteId}, commands::{MeshRenderCommand, RenderCommandBuffer, SpriteRenderCommand}, renderable::{model::MeshInstance, skybox::SkyBox, sprite::SpriteInstance}, renderer::{BindGroupId, PipelineId}
     },
     scene::{
         instance_buffer::InstanceBuffer, light::point::{PointLight, PointLightCollection}, raw_spatial_transform::RawSpatialTransform
@@ -25,9 +25,10 @@ new_key_type! {
 /// The main representation of "something" in the game.
 pub struct Scene {
     mesh_instances: SlotMap<MeshInstanceId, MeshInstance>,
-    instances_by_mesh: SecondaryMap<MeshId, Vec<MeshInstanceId>>,
-    sprite_instances: SlotMap<SpriteInstanceId, SpriteInstance>,
-    camera: Camera,
+    instances_by_mesh: SecondaryMap<MeshId, Vec<MeshInstanceId>>, // optimization, so that we don't need to iterate `mesh_instances` to find all instances for a mesh.
+    sprite_instances: SlotMap<SpriteInstanceId, SpriteInstance>, 
+    instances_by_sprite: SecondaryMap<SpriteId, Vec<SpriteInstanceId>>, // optimization, same as ^
+    camera: Camera, 
     point_lights: PointLightCollection,
     pipeline: PipelineId,
     camera_bind_group: BindGroupId,
@@ -53,6 +54,7 @@ impl Scene {
             mesh_instances: SlotMap::with_key(),
             instances_by_mesh: SecondaryMap::new(),
             sprite_instances: SlotMap::with_key(),
+            instances_by_sprite: SecondaryMap::new(),
             camera,
             point_lights,
             pipeline,
@@ -65,50 +67,14 @@ impl Scene {
     }
 
     /// Convert the scene to render commands.
-    ///
-    /// Writes the scene's meshes' instance data into the `instance_buffer`,
-    /// passing their ranges into the render command.
     pub fn to_commands<'a>(
         &'a self,
         world: &World,
         assets: &'a AssetStore,
         instance_buffer: &mut InstanceBuffer,
     ) -> Result<RenderCommandBuffer<'a>, SceneError> {
-        let mut mesh_commands = Vec::new();
-
-        for (mesh_id, mesh_instances) in &self.instances_by_mesh {
-            let mesh = assets
-                .mesh(mesh_id)
-                .ok_or(SceneError::MeshNotFound(mesh_id))?;
-            let material = assets
-                .material(mesh.material)
-                .ok_or(SceneError::MaterialNotFound(mesh.material))?;
-            let instance_transforms: Vec<RawSpatialTransform> = mesh_instances
-                .iter()
-                .map(|&inst_id| {
-                    let instance = self
-                        .mesh_instances
-                        .get(inst_id)
-                        .ok_or(SceneError::MeshInstanceNotFound(inst_id))?;
-                    let entity = world
-                        .entity(instance.entity)
-                        .ok_or(SceneError::EntityNotFound(instance.entity))?;
-                    Ok(
-                        entity.transform_raw()
-                    )
-                })
-                .collect::<Result<_, SceneError>>()?;
-            let instance_buffer_range = instance_buffer.add(instance_transforms, mesh_id);
-            let command = mesh.to_render_command(
-                mesh_id,
-                material,
-                self.pipeline,
-                instance_buffer_range,
-                self.camera_bind_group,
-                self.lighting_bind_group,
-            );
-            mesh_commands.push(command);
-        }
+        let mesh_commands = self.mesh_commands(world, assets, instance_buffer)?;
+        let sprite_commands = self.sprite_commands(world, assets, instance_buffer)?;
         let sky_command = self.skybox.to_render_command(
             self.sky_pipeline,
             self.sky_bind_group,
@@ -116,6 +82,7 @@ impl Scene {
         );
         let commands = RenderCommandBuffer {
             mesh: mesh_commands,
+            sprite: sprite_commands,
             skybox: Some(sky_command)
         };
         Ok(commands)
@@ -148,16 +115,103 @@ impl Scene {
         }
         instance_ids
     }
+
+    /// Get the mesh commands for a scene.
+    fn mesh_commands<'a>(
+        &'a self,
+        world: &World,
+        assets: &'a AssetStore,
+        instance_buffer: &mut InstanceBuffer,
+    ) -> Result<Vec<MeshRenderCommand<'a>>, SceneError> {
+        let mut mesh_commands = Vec::new();
+        for (mesh_id, mesh_instances) in &self.instances_by_mesh {
+            let mesh = assets
+                .mesh(mesh_id)
+                .ok_or(SceneError::MeshNotFound(mesh_id))?;
+            let material = assets
+                .material(mesh.material)
+                .ok_or(SceneError::MaterialNotFound(mesh.material))?;
+            let instance_transforms: Vec<RawSpatialTransform> = mesh_instances
+                .iter()
+                .map(|&inst_id| {
+                    let instance = self
+                        .mesh_instances
+                        .get(inst_id)
+                        .ok_or(SceneError::MeshInstanceNotFound(inst_id))?;
+                    let entity_transform = world
+                        .entity(instance.entity)
+                        .ok_or(SceneError::EntityNotFound(instance.entity))?
+                        .transform_raw();
+                    Ok(entity_transform)
+                })
+                .collect::<Result<_, SceneError>>()?;
+            let instance_buffer_range = instance_buffer.add_mesh(instance_transforms, mesh_id);
+            let command = mesh.to_render_command(
+                mesh_id,
+                material,
+                self.pipeline,
+                instance_buffer_range,
+                self.camera_bind_group,
+                self.lighting_bind_group,
+            );
+            mesh_commands.push(command);
+        }
+        Ok(mesh_commands)
+    }
+
+    /// Get the sprite commands for a scene.
+    fn sprite_commands<'a>(
+        &'a self,
+        world: &World,
+        assets: &'a AssetStore,
+        instance_buffer: &mut InstanceBuffer,
+    ) -> Result<Vec<SpriteRenderCommand<'a>>, SceneError> {
+        let mut sprite_commands = Vec::new();
+        for (sprite_id, sprite_instances) in &self.instances_by_sprite {
+            let sprite = assets
+                .sprite(sprite_id)
+                .ok_or(SceneError::SpriteNotFound(sprite_id))?;
+            let instance_transforms: Vec<RawSpatialTransform> = sprite_instances
+                .iter()
+                .map(|&inst_id| {
+                    let instance = self
+                        .sprite_instances
+                        .get(inst_id)
+                        .ok_or(SceneError::SpriteInstanceNotFound(inst_id))?;
+                    let entity_transform = world
+                        .entity(instance.entity)
+                        .ok_or(SceneError::EntityNotFound(instance.entity))?
+                        .transform_raw();
+                    Ok(entity_transform)
+                })
+                .collect::<Result<_, SceneError>>()?;
+            let instance_buffer_range = instance_buffer.add_sprite(instance_transforms, sprite_id);
+            let command = sprite.to_render_command(
+                sprite_id,
+                self.pipeline,
+                self.camera_bind_group,
+                instance_buffer_range
+            );
+            sprite_commands.push(command);
+        }
+        Ok(sprite_commands)
+    }
 }
 
+
+/// Error that occurred while converting a scene to render commands.
 #[derive(Debug, Error)]
 pub enum SceneError {
     #[error("Couldn't find mesh of ID {0:?}")]
     MeshNotFound(MeshId),
+    #[error("Couldn't find sprite of ID {0:?}")]
+    SpriteNotFound(SpriteId),
     #[error("Couldn't find material of ID {0:?}")]
     MaterialNotFound(MaterialId),
     #[error("Couldn't find mesh instance for ID {0:?}")]
     MeshInstanceNotFound(MeshInstanceId),
+    #[error("Couldn't find sprite instance for ID {0:?}")]
+    SpriteInstanceNotFound(SpriteInstanceId),
     #[error("Couldn't find the entity of ID {0:?}")]
     EntityNotFound(WorldEntityId)
 }

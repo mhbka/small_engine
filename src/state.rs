@@ -82,6 +82,9 @@ impl<'a> State<'a> {
             })
             .await?;
 
+        println!("Features: {:?}", adapter.features());
+        println!("Limits: {:?}", adapter.limits());
+
         let (device, queue) = adapter
             .request_device(&DeviceDescriptor {
                 label: None,

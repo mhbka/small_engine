@@ -67,7 +67,7 @@ impl HdrPipeline {
             "Hdr::pipeline", 
             gpu, 
             &[bind_group.layout()], 
-            &[], // we generate vertex data directly in the shader 
+            &[], // we generate vertex data directly in the shader, so no need to pass anything in
             &shader, 
             &shader, 
             None,

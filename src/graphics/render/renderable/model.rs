@@ -63,12 +63,11 @@ impl Mesh {
             lighting_bind_group,
             material_bind_group: material.bind_group,
             vertex_buffer: self.vertex_buffer.handle().slice(..),
-            instance_buffer_range: instance_buffer_range,
             index_buffer: self.index_buffer.handle().slice(..),
             draw: DrawCommand::Indexed {
                 base_vertex: 0,
                 instances: 0..(instance_buffer_range.end - instance_buffer_range.start) as u32,
-                indices: 0..self.num_elements,
+                indices: instance_buffer_range.range().into(),
             },
         }
     }

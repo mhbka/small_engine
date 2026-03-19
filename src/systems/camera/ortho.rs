@@ -149,7 +149,7 @@ impl OrthoCameraData {
         top = top / self.zoom;
         bottom = bottom / self.zoom;
         
-        // OPENGL_TO_WGPU_MATRIX * 
+        // OPENGL_TO_WGPU_MATRIX * ortho(left, right, bottom, top, self.near, self.far)
         ortho(left, right, bottom, top, self.near, self.far)
     }
 }

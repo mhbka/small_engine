@@ -1,11 +1,11 @@
 use crate::{core::world::World, graphics::{
     constants::{
-        INDEX_BUFFER_FORMAT, INSTANCE_BUFFER_SLOT, MESH_CAMERA_BIND_GROUP_SLOT, MESH_LIGHTING_BIND_GROUP_SLOT, MESH_MATERIAL_BIND_GROUP_SLOT, SKYBOX_CAMERA_BIND_GROUP_SLOT, SKYBOX_CUBEMAP_BIND_GROUP_SLOT, VERTEX_BUFFER_SLOT
+        INDEX_BUFFER_FORMAT, INSTANCE_BUFFER_SLOT, MESH_CAMERA_BIND_GROUP_SLOT, MESH_LIGHTING_BIND_GROUP_SLOT, MESH_MATERIAL_BIND_GROUP_SLOT, SKYBOX_CAMERA_BIND_GROUP_SLOT, SKYBOX_CUBEMAP_BIND_GROUP_SLOT, SPRITE_CAMERA_BIND_GROUP_SLOT, SPRITE_SPRITE_BIND_GROUP_SLOT, VERTEX_BUFFER_SLOT
     },
     gpu::{GpuContext, bind_group::GpuBindGroup, pipeline::GpuPipeline, texture::GpuTexture},
     render::{
-        assets::{AssetStore, MeshId},
-        commands::{DrawCommand, MeshRenderCommand, SkyboxRenderCommand}, hdr::HdrPipeline,
+        assets::{AssetStore, MeshId, SpriteId},
+        commands::{DrawCommand, MeshRenderCommand, SkyboxRenderCommand, SpriteRenderCommand}, hdr::HdrPipeline,
     },
     scene::{Scene, SceneError, instance_buffer::InstanceBuffer}, textures::depth::DepthTexture,
 }};
@@ -26,7 +26,7 @@ struct CurrentFrameData {
     view: TextureView
 }
 
-/// Handles rendering for the entire program.
+/// Handles rendering for the program.
 pub struct Renderer<'a> {
     gpu: GpuContext,
     surface: wgpu::Surface<'a>,
@@ -191,11 +191,16 @@ impl<'a> Renderer<'a> {
         for command in commands.mesh {
             self.write_mesh_command(&command, &mut render_pass)?
         }
+        for command in commands.sprite {
+            self.write_sprite_command(&command, &mut render_pass)?
+        }
         drop(render_pass);
 
         // process the HDR view into the final surface view and submit the queue
         self.hdr.process(&mut encoder, &frame.view);
         self.gpu.queue().submit([encoder.finish()]);
+
+        // TODO: should we be clearing? should still be valid across frames
         self.instance_buffer.clear();
 
         Ok(())
@@ -300,7 +305,7 @@ impl<'a> Renderer<'a> {
             .handle();
         render_pass.set_pipeline(pipeline);
 
-        // get and set the bind groups
+        // bind groups
         let camera_bind_group = self
             .get_bind_group(command.camera_bind_group, command.name)?
             .handle();
@@ -320,7 +325,7 @@ impl<'a> Renderer<'a> {
         // instance vertex buffer - write the buffer data, then get our buffer slices
         let instance_buffer_slice = self
             .instance_buffer
-            .get_slice(command.mesh)
+            .get_mesh_slice(command.mesh)
             .ok_or(RenderError::MeshHasNoInstanceData(command.mesh))?;
         render_pass.set_vertex_buffer(INSTANCE_BUFFER_SLOT, instance_buffer_slice);
 
@@ -359,6 +364,36 @@ impl<'a> Renderer<'a> {
         Ok(())
     }
 
+    /// Write a sprite render command to the render pass.
+    fn write_sprite_command(
+        &self,
+        command: &SpriteRenderCommand,
+        render_pass: &mut wgpu::RenderPass<'_>,
+    ) -> RenderResult<()> {
+        let pipeline = self
+            .get_pipeline(command.pipeline, command.name)?
+            .handle();
+        render_pass.set_pipeline(pipeline);
+
+        let camera_bind_group = self
+            .get_bind_group(command.camera_bind_group, command.name)?
+            .handle();
+        let sprite_bind_group = self
+            .get_bind_group(command.sprite_bind_group, command.name)?
+            .handle();
+        render_pass.set_bind_group(SPRITE_CAMERA_BIND_GROUP_SLOT, camera_bind_group, &[]);
+        render_pass.set_bind_group(SPRITE_SPRITE_BIND_GROUP_SLOT, sprite_bind_group, &[]);
+
+        let instance_buffer_slice = self
+            .instance_buffer
+            .get_sprite_slice(command.sprite)
+            .ok_or(RenderError::SpriteHasNoInstanceData(command.sprite))?;
+        render_pass.set_vertex_buffer(INSTANCE_BUFFER_SLOT, instance_buffer_slice);
+
+        self.draw(command.draw.clone(), render_pass);
+        Ok(())
+    }
+
     /// Handle the draw command.
     fn draw(&self, draw_command: DrawCommand, render_pass: &mut wgpu::RenderPass<'_>) {
         match draw_command {
@@ -390,6 +425,8 @@ pub enum RenderError {
     UnconfiguredSurface,
     #[error("The mesh {0:?} didn't have a corresponding instance buffer slice")]
     MeshHasNoInstanceData(MeshId),
+    #[error("The sprite {0:?} didn't have a corresponding instance buffer slice")]
+    SpriteHasNoInstanceData(SpriteId),
     #[error("{0}")]
     Scene(#[from] SceneError),
     #[error("{0}")]
