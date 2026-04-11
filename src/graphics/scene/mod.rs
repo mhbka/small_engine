@@ -145,12 +145,11 @@ impl Scene {
                     Ok(entity_transform)
                 })
                 .collect::<Result<_, SceneError>>()?;
-            let instance_buffer_range = instance_buffer.add_mesh(instance_transforms, mesh_id);
+            *instance_buffer.get_mesh_data(mesh_id) = instance_transforms;
             let command = mesh.to_render_command(
                 mesh_id,
                 material,
                 self.pipeline,
-                instance_buffer_range,
                 self.camera_bind_group,
                 self.lighting_bind_group,
             );

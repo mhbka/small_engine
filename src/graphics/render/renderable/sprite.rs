@@ -1,4 +1,4 @@
-use crate::graphics::render::commands::{DrawCommand, SpriteRenderCommand};
+use crate::graphics::render::commands::SpriteRenderCommand;
 use crate::graphics::render::renderer::{BindGroupId, PipelineId};
 use crate::graphics::scene::instance_buffer::InstanceBufferRange;
 use crate::graphics::textures::standard::StandardTexture;
@@ -33,11 +33,6 @@ impl Sprite {
             camera_bind_group,
             sprite_bind_group: self.bind_group,
             instance_buffer_range,
-            draw: DrawCommand::Indexed { 
-                indices: 0..5,
-                base_vertex: 0,
-                instances: 0..1
-            },
         }
     }
 }

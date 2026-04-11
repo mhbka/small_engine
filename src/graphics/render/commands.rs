@@ -5,7 +5,6 @@ use crate::graphics::{
     },
     scene::instance_buffer::InstanceBufferRange,
 };
-use std::ops::Range;
 
 /// The render commands.
 pub struct RenderCommandBuffer<'obj> {
@@ -24,21 +23,6 @@ pub struct MeshRenderCommand<'obj> {
     pub material_bind_group: BindGroupId,
     pub vertex_buffer: wgpu::BufferSlice<'obj>,
     pub index_buffer: wgpu::BufferSlice<'obj>,
-    pub draw: DrawCommand,
-}
-
-/// What kind of drawing the render should do for this primitive.
-#[derive(Clone)]
-pub enum DrawCommand {
-    NonIndexed {
-        vertices: Range<u32>,
-        instances: Range<u32>,
-    },
-    Indexed {
-        indices: Range<u32>,
-        base_vertex: i32,
-        instances: Range<u32>,
-    },
 }
 
 /// A command describing how to render a skybox.
@@ -57,5 +41,4 @@ pub struct SpriteRenderCommand<'obj> {
     pub camera_bind_group: BindGroupId,
     pub sprite_bind_group: BindGroupId,
     pub instance_buffer_range: InstanceBufferRange,
-    pub draw: DrawCommand,
 }

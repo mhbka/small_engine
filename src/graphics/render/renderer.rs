@@ -5,7 +5,7 @@ use crate::{core::world::World, graphics::{
     gpu::{GpuContext, bind_group::GpuBindGroup, pipeline::GpuPipeline, texture::GpuTexture},
     render::{
         assets::{AssetStore, MeshId, SpriteId},
-        commands::{DrawCommand, MeshRenderCommand, SkyboxRenderCommand, SpriteRenderCommand}, hdr::HdrPipeline,
+        commands::{MeshRenderCommand, SkyboxRenderCommand, SpriteRenderCommand}, hdr::HdrPipeline,
     },
     scene::{Scene, SceneError, instance_buffer::InstanceBuffer}, textures::depth::DepthTexture,
 }};
@@ -141,10 +141,12 @@ impl<'a> Renderer<'a> {
         if !self.surface_is_configured {
             return Err(RenderError::UnconfiguredSurface);
         }
+        
+        // write the instance buffer (we *must* write this first, so that instance buffer ranges in the scene's commands are correct)
+        self.instance_buffer.write();
 
         // get the render commands
         let commands = scene.to_commands(&world, &self.assets, &mut self.instance_buffer)?;
-        self.instance_buffer.write();
 
         // get the surface, encoder, render pass
         let frame = match &self.current_frame {
@@ -333,33 +335,9 @@ impl<'a> Renderer<'a> {
         render_pass.set_index_buffer(command.index_buffer, INDEX_BUFFER_FORMAT);
 
         // draw
-        self.draw(command.draw.clone(), render_pass);
-
-        Ok(())
-    }
-
-    /// Write a skybox render command to the render pass.
-    fn write_skybox_command(
-        &self, 
-        command: &SkyboxRenderCommand,
-        render_pass: &mut wgpu::RenderPass<'_>,
-    ) -> RenderResult<()> 
-    {
-        let pipeline = self
-            .get_pipeline(command.sky_pipeline, command.name)?
-            .handle();
-        render_pass.set_pipeline(pipeline);
-
-        let camera_bind_group = self
-            .get_bind_group(command.camera_bind_group, command.name)?
-            .handle();
-        let sky_bind_group = self
-            .get_bind_group(command.sky_bind_group, command.name)?
-            .handle();
-        render_pass.set_bind_group(SKYBOX_CAMERA_BIND_GROUP_SLOT, camera_bind_group, &[]);
-        render_pass.set_bind_group(SKYBOX_CUBEMAP_BIND_GROUP_SLOT, sky_bind_group, &[]);
-
-        render_pass.draw(0..3, 0..1);
+        let indices = 0..(command.index_buffer.size().get() as u32);
+        let instances = 0..(instance_buffer_slice.size().get() as u32);
+        render_pass.draw_indexed(indices, 0, instances);
 
         Ok(())
     }
@@ -390,23 +368,37 @@ impl<'a> Renderer<'a> {
             .ok_or(RenderError::SpriteHasNoInstanceData(command.sprite))?;
         render_pass.set_vertex_buffer(INSTANCE_BUFFER_SLOT, instance_buffer_slice);
 
-        self.draw(command.draw.clone(), render_pass);
+        let instances = 0..(instance_buffer_slice.size().get() as u32);
+        let vertices = 0..5;
+        render_pass.draw(vertices, instances);
+
         Ok(())
     }
 
-    /// Handle the draw command.
-    fn draw(&self, draw_command: DrawCommand, render_pass: &mut wgpu::RenderPass<'_>) {
-        match draw_command {
-            DrawCommand::NonIndexed {
-                vertices,
-                instances,
-            } => render_pass.draw(vertices, instances),
-            DrawCommand::Indexed {
-                indices,
-                base_vertex,
-                instances,
-            } => render_pass.draw_indexed(indices, base_vertex, instances),
-        }
+    /// Write a skybox render command to the render pass.
+    fn write_skybox_command(
+        &self, 
+        command: &SkyboxRenderCommand,
+        render_pass: &mut wgpu::RenderPass<'_>,
+    ) -> RenderResult<()> 
+    {
+        let pipeline = self
+            .get_pipeline(command.sky_pipeline, command.name)?
+            .handle();
+        render_pass.set_pipeline(pipeline);
+
+        let camera_bind_group = self
+            .get_bind_group(command.camera_bind_group, command.name)?
+            .handle();
+        let sky_bind_group = self
+            .get_bind_group(command.sky_bind_group, command.name)?
+            .handle();
+        render_pass.set_bind_group(SKYBOX_CAMERA_BIND_GROUP_SLOT, camera_bind_group, &[]);
+        render_pass.set_bind_group(SKYBOX_CUBEMAP_BIND_GROUP_SLOT, sky_bind_group, &[]);
+
+        render_pass.draw(0..3, 0..1);
+
+        Ok(())
     }
 }
 
