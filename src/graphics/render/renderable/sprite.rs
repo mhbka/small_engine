@@ -1,6 +1,5 @@
 use crate::graphics::render::commands::SpriteRenderCommand;
 use crate::graphics::render::renderer::{BindGroupId, PipelineId};
-use crate::graphics::scene::instance_buffer::InstanceBufferRange;
 use crate::graphics::textures::standard::StandardTexture;
 use crate::{core::world::WorldEntityId, graphics::render::assets::SpriteId};
 
@@ -24,7 +23,6 @@ impl Sprite {
         sprite_id: SpriteId,
         pipeline: PipelineId,
         camera_bind_group: BindGroupId,
-        instance_buffer_range: InstanceBufferRange,
     ) -> SpriteRenderCommand {
         SpriteRenderCommand {
             name: &self.name,
@@ -32,7 +30,6 @@ impl Sprite {
             pipeline,
             camera_bind_group,
             sprite_bind_group: self.bind_group,
-            instance_buffer_range,
         }
     }
 }

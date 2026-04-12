@@ -3,7 +3,6 @@ use crate::graphics::{
         assets::{MeshId, SpriteId},
         renderer::{BindGroupId, PipelineId},
     },
-    scene::instance_buffer::InstanceBufferRange,
 };
 
 /// The render commands.
@@ -40,5 +39,4 @@ pub struct SpriteRenderCommand<'obj> {
     pub pipeline: PipelineId,
     pub camera_bind_group: BindGroupId,
     pub sprite_bind_group: BindGroupId,
-    pub instance_buffer_range: InstanceBufferRange,
 }

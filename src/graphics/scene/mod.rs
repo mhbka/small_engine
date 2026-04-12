@@ -184,12 +184,12 @@ impl Scene {
                     Ok(entity_transform)
                 })
                 .collect::<Result<_, SceneError>>()?;
-            let instance_buffer_range = instance_buffer.add_sprite(instance_transforms, sprite_id);
+            let sprite_instance_buffer = instance_buffer.get_sprite_data(sprite_id);
+            sprite_instance_buffer.extend(instance_transforms);
             let command = sprite.to_render_command(
                 sprite_id,
                 self.pipeline,
-                self.camera_bind_group,
-                instance_buffer_range
+                self.camera_bind_group
             );
             sprite_commands.push(command);
         }

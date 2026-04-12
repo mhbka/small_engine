@@ -1,17 +1,17 @@
-use crate::{core::world::World, graphics::{
+pub mod resources;use crate::{core::world::World, graphics::{
     constants::{
         INDEX_BUFFER_FORMAT, INSTANCE_BUFFER_SLOT, MESH_CAMERA_BIND_GROUP_SLOT, MESH_LIGHTING_BIND_GROUP_SLOT, MESH_MATERIAL_BIND_GROUP_SLOT, SKYBOX_CAMERA_BIND_GROUP_SLOT, SKYBOX_CUBEMAP_BIND_GROUP_SLOT, SPRITE_CAMERA_BIND_GROUP_SLOT, SPRITE_SPRITE_BIND_GROUP_SLOT, VERTEX_BUFFER_SLOT
     },
     gpu::{GpuContext, bind_group::GpuBindGroup, pipeline::GpuPipeline, texture::GpuTexture},
     render::{
         assets::{AssetStore, MeshId, SpriteId},
-        commands::{MeshRenderCommand, SkyboxRenderCommand, SpriteRenderCommand}, hdr::HdrPipeline,
+        commands::{MeshRenderCommand, SkyboxRenderCommand, SpriteRenderCommand}, hdr::HdrPipeline, renderer::resources::RendererResources,
     },
-    scene::{Scene, SceneError, instance_buffer::InstanceBuffer}, textures::depth::DepthTexture,
+    scene::{Scene, SceneError, instance_buffer::{InstanceBuffer, WrittenInstanceBuffer}}, textures::depth::DepthTexture,
 }};
 use slotmap::{SlotMap, new_key_type};
 use thiserror::Error;
-use wgpu::{CommandEncoder, RenderPass, SurfaceTexture, TextureView};
+use wgpu::{BufferSlice, CommandEncoder, RenderPass, SurfaceTexture, TextureView};
 
 new_key_type! {
     /// For referencing pipelines in the renderer.
@@ -34,10 +34,8 @@ pub struct Renderer<'a> {
     surface_is_configured: bool,
     depth_texture: DepthTexture,
     instance_buffer: InstanceBuffer,
-    assets: AssetStore,
+    resources: RendererResources,
     hdr: HdrPipeline,
-    pipelines: SlotMap<PipelineId, GpuPipeline>,
-    bind_groups: SlotMap<BindGroupId, GpuBindGroup>,
     current_frame: Option<CurrentFrameData>
 }
 
@@ -52,6 +50,11 @@ impl<'a> Renderer<'a> {
         let depth_texture = DepthTexture::new(&gpu, "depth_texture", &surface_config);
         let instance_buffer = InstanceBuffer::new(gpu.clone(), "instance_buffer".into());
         let hdr = HdrPipeline::new(&gpu, &surface_config);
+        let resources = RendererResources::new(
+            SlotMap::with_key(),
+            SlotMap::with_key(),
+            assets
+        );
         Self {
             gpu,
             surface,
@@ -59,10 +62,8 @@ impl<'a> Renderer<'a> {
             surface_is_configured: false,
             depth_texture,
             instance_buffer,
-            assets,
             hdr,
-            pipelines: SlotMap::with_key(),
-            bind_groups: SlotMap::with_key(),
+            resources,
             current_frame: None
         }
     }
@@ -78,41 +79,6 @@ impl<'a> Renderer<'a> {
             self.depth_texture = DepthTexture::new(&self.gpu, "depth_texture", &self.surface_config);
             self.hdr.resize(&self.gpu, width, height);
         }
-    }
-
-    /// Add the pipelines to the renderer and get back their IDs for referencing.
-    pub fn add_pipelines(&mut self, pipelines: Vec<GpuPipeline>) -> Vec<PipelineId> {
-        pipelines
-            .into_iter()
-            .map(|p| self.pipelines.insert(p))
-            .collect()
-    }
-
-    /// Add the global bind groups to the renderer and get back their IDs for referencing.
-    pub fn add_bind_groups(&mut self, groups: Vec<GpuBindGroup>) -> Vec<BindGroupId> {
-        groups
-            .into_iter()
-            .map(|g| self.bind_groups.insert(g))
-            .collect()
-    }
-
-    /// Get the referenced pipeline.
-    pub fn get_pipeline(&self, id: PipelineId, command_label: &str) -> RenderResult<&GpuPipeline> {
-        self.pipelines
-            .get(id)
-            .ok_or(RenderError::PipelineNotFound { label: command_label.into() })
-    }
-
-    /// Get the referenced bind group.
-    pub fn get_bind_group(&self, id: BindGroupId, command_label: &str) -> RenderResult<&GpuBindGroup> {
-        self.bind_groups
-            .get(id)
-            .ok_or(RenderError::GlobalBindGroupNotFound { label: command_label.into() })
-    }
-
-    /// Get the assets store.
-    pub fn get_assets_store(&mut self) -> &mut AssetStore {
-        &mut self.assets
     }
 
     /// Begin a frame for rendering.
@@ -141,12 +107,6 @@ impl<'a> Renderer<'a> {
         if !self.surface_is_configured {
             return Err(RenderError::UnconfiguredSurface);
         }
-        
-        // write the instance buffer (we *must* write this first, so that instance buffer ranges in the scene's commands are correct)
-        self.instance_buffer.write();
-
-        // get the render commands
-        let commands = scene.to_commands(&world, &self.assets, &mut self.instance_buffer)?;
 
         // get the surface, encoder, render pass
         let frame = match &self.current_frame {
@@ -186,24 +146,30 @@ impl<'a> Renderer<'a> {
             timestamp_writes: None,
         });
 
+        
+        let Renderer { instance_buffer, resources, .. } = self;
+
+        // get the render commands
+        let commands = scene.to_commands(&world, resources.get_assets_store(), instance_buffer)?;
+
+        // write the instance buffer (we *must* write this first, so that instance buffer ranges in the scene's commands are correct)
+        let written_instance_buffer = instance_buffer.write();
+
         // write the render commands
         if let Some(command) = &commands.skybox { 
-            self.write_skybox_command(&command, &mut render_pass)?
+            Self::write_skybox_command(resources, &command, &mut render_pass)?
         }
         for command in commands.mesh {
-            self.write_mesh_command(&command, &mut render_pass)?
+            Self::write_mesh_command(resources, &command, &written_instance_buffer, &mut render_pass)?
         }
         for command in commands.sprite {
-            self.write_sprite_command(&command, &mut render_pass)?
+            Self::write_sprite_command(resources, &command, &written_instance_buffer, &mut render_pass)?
         }
         drop(render_pass);
 
         // process the HDR view into the final surface view and submit the queue
         self.hdr.process(&mut encoder, &frame.view);
         self.gpu.queue().submit([encoder.finish()]);
-
-        // TODO: should we be clearing? should still be valid across frames
-        self.instance_buffer.clear();
 
         Ok(())
     }
@@ -297,24 +263,25 @@ impl<'a> Renderer<'a> {
     ///
     /// Additionally requires the mesh ID + the instance buffer that the mesh's instance data is in.
     fn write_mesh_command(
-        &self,
+        resources: &RendererResources,
         command: &MeshRenderCommand,
+        written_instance_buffer: &WrittenInstanceBuffer<'_>,
         render_pass: &mut wgpu::RenderPass,
     ) -> RenderResult<()>
     {
-        let pipeline = self
+        let pipeline = resources
             .get_pipeline(command.pipeline, command.name)?
             .handle();
         render_pass.set_pipeline(pipeline);
 
         // bind groups
-        let camera_bind_group = self
+        let camera_bind_group = resources
             .get_bind_group(command.camera_bind_group, command.name)?
             .handle();
-        let lighting_bind_group = self
+        let lighting_bind_group = resources
             .get_bind_group(command.lighting_bind_group, command.name)?
             .handle();
-        let material_bind_group = self
+        let material_bind_group = resources
             .get_bind_group(command.material_bind_group, command.name)?
             .handle();
         render_pass.set_bind_group(MESH_CAMERA_BIND_GROUP_SLOT, camera_bind_group, &[]);
@@ -324,9 +291,8 @@ impl<'a> Renderer<'a> {
         // normal vertex buffer
         render_pass.set_vertex_buffer(VERTEX_BUFFER_SLOT, command.vertex_buffer);
 
-        // instance vertex buffer - write the buffer data, then get our buffer slices
-        let instance_buffer_slice = self
-            .instance_buffer
+        // instance vertex buffer
+        let instance_buffer_slice = written_instance_buffer
             .get_mesh_slice(command.mesh)
             .ok_or(RenderError::MeshHasNoInstanceData(command.mesh))?;
         render_pass.set_vertex_buffer(INSTANCE_BUFFER_SLOT, instance_buffer_slice);
@@ -344,26 +310,26 @@ impl<'a> Renderer<'a> {
 
     /// Write a sprite render command to the render pass.
     fn write_sprite_command(
-        &self,
+        resources: &RendererResources,
         command: &SpriteRenderCommand,
+        written_instance_buffer: &WrittenInstanceBuffer<'_>,
         render_pass: &mut wgpu::RenderPass<'_>,
     ) -> RenderResult<()> {
-        let pipeline = self
+        let pipeline = resources
             .get_pipeline(command.pipeline, command.name)?
             .handle();
         render_pass.set_pipeline(pipeline);
 
-        let camera_bind_group = self
+        let camera_bind_group = resources
             .get_bind_group(command.camera_bind_group, command.name)?
             .handle();
-        let sprite_bind_group = self
+        let sprite_bind_group = resources
             .get_bind_group(command.sprite_bind_group, command.name)?
             .handle();
         render_pass.set_bind_group(SPRITE_CAMERA_BIND_GROUP_SLOT, camera_bind_group, &[]);
         render_pass.set_bind_group(SPRITE_SPRITE_BIND_GROUP_SLOT, sprite_bind_group, &[]);
 
-        let instance_buffer_slice = self
-            .instance_buffer
+        let instance_buffer_slice = written_instance_buffer
             .get_sprite_slice(command.sprite)
             .ok_or(RenderError::SpriteHasNoInstanceData(command.sprite))?;
         render_pass.set_vertex_buffer(INSTANCE_BUFFER_SLOT, instance_buffer_slice);
@@ -377,20 +343,20 @@ impl<'a> Renderer<'a> {
 
     /// Write a skybox render command to the render pass.
     fn write_skybox_command(
-        &self, 
+        resources: &RendererResources, 
         command: &SkyboxRenderCommand,
         render_pass: &mut wgpu::RenderPass<'_>,
     ) -> RenderResult<()> 
     {
-        let pipeline = self
+        let pipeline = resources
             .get_pipeline(command.sky_pipeline, command.name)?
             .handle();
         render_pass.set_pipeline(pipeline);
 
-        let camera_bind_group = self
+        let camera_bind_group = resources
             .get_bind_group(command.camera_bind_group, command.name)?
             .handle();
-        let sky_bind_group = self
+        let sky_bind_group = resources
             .get_bind_group(command.sky_bind_group, command.name)?
             .handle();
         render_pass.set_bind_group(SKYBOX_CAMERA_BIND_GROUP_SLOT, camera_bind_group, &[]);
