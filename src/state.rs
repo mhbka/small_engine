@@ -34,7 +34,7 @@ use crate::graphics::render::renderable::model::ModelVertex;
 use crate::graphics::render::renderable::skybox::SkyBox;
 use crate::graphics::render::renderer::Renderer;
 use crate::graphics::scene::Scene;
-use crate::graphics::scene::instance_buffer::MeshInstanceData;
+use crate::graphics::scene::instance_buffer::InstanceData;
 use crate::graphics::scene::light::point::{PointLight, PointLightCollection};
 use crate::graphics::textures::depth::DepthTexture;
 use crate::graphics::textures::standard::DIFFUSE_BIND_GROUP_LAYOUT_ENTRIES;
@@ -167,7 +167,7 @@ impl<'a> State<'a> {
                 &camera_bind_group.layout(),
                 &point_light_bind_group.layout(),
             ],
-            &[ModelVertex::desc(), MeshInstanceData::desc()],
+            &[ModelVertex::desc(), InstanceData::desc()],
             &shader,
             &shader,
             Some(DepthStencilState {
@@ -183,7 +183,7 @@ impl<'a> State<'a> {
 
         // renderer
         let mut renderer = Renderer::new(gpu.clone(), surface, config, AssetStore::new());
-        let pipeline_id = renderer.add_pipelines(vec![pipeline])[0];
+        let pipeline_id = renderer.resources().add_pipelines(vec![pipeline])[0];
 
         // object
         let obj_model = resources::general::load_model("cube.obj", &gpu, &mut renderer)
@@ -245,12 +245,12 @@ impl<'a> State<'a> {
             wgpu::PrimitiveTopology::TriangleList,
             HdrPipeline::COLOR_FORMAT,
         );
-        let sky_pipeline_id = renderer.add_pipelines(vec![sky_pipeline])[0];
+        let sky_pipeline_id = renderer.resources().add_pipelines(vec![sky_pipeline])[0];
         let skybox = SkyBox::new("skybox".into(), sky_texture);
   
 
         // scene
-        let bind_group_ids = renderer.add_bind_groups(vec![camera_bind_group, point_light_bind_group, sky_bind_group]);
+        let bind_group_ids = renderer.resources().add_bind_groups(vec![camera_bind_group, point_light_bind_group, sky_bind_group]);
         let camera_bind_group_id = bind_group_ids[0];
         let lighting_bind_group_id = bind_group_ids[1];
         let sky_bind_group_id = bind_group_ids[2]; 
