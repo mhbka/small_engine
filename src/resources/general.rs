@@ -94,7 +94,7 @@ pub async fn load_model(
             StandardTexture::bind_group_entries(&diffuse_texture, &normal_texture);
         let bind_group =
             GpuBindGroup::create_default(file_name, gpu, &layout_entries.0, &layout_entries.1);
-        let bind_group_id = renderer.add_bind_groups(vec![bind_group])[0];
+        let bind_group_id = renderer.resources().add_bind_groups(vec![bind_group])[0];
         materials.push(Material {
             name: m.name,
             diffuse_texture,
@@ -103,7 +103,8 @@ pub async fn load_model(
         })
     }
     let material_ids = renderer
-        .get_assets_store()
+        .resources()
+        .get_assets_store_mut()
         .add_materials(materials);
     let meshes = models
         .into_iter()
@@ -175,7 +176,8 @@ pub async fn load_model(
         .collect::<Vec<_>>();
 
     let mesh_ids = renderer
-        .get_assets_store()
+        .resources()
+        .get_assets_store_mut()
         .add_meshes(meshes);
 
     Ok(model::Model {

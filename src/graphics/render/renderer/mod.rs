@@ -68,6 +68,11 @@ impl<'a> Renderer<'a> {
         }
     }
 
+    /// Get the renderer resources.
+    pub fn resources(&mut self) -> &mut RendererResources {
+        &mut self.resources
+    }
+
     /// Handle resizing of the surface.
     pub fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
