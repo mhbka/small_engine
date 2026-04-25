@@ -26,7 +26,6 @@ use crate::example::{generate_one_big_entity, generated_spaced_entities};
 use crate::graphics::gpu::GpuContext;
 use crate::graphics::gpu::bind_group::GpuBindGroup;
 use crate::graphics::gpu::pipeline::GpuPipeline;
-use crate::graphics::gpu::texture::GpuTexture;
 use crate::graphics::render::assets::AssetStore;
 use crate::graphics::render::hdr::HdrPipeline;
 use crate::graphics::render::renderable::model::MeshInstance;
@@ -82,25 +81,23 @@ impl<'a> State<'a> {
             })
             .await?;
 
-        println!("Features: {:?}", adapter.features());
-        println!("Limits: {:?}", adapter.limits());
+        println!("Features: {:?}\n", adapter.features());
+        println!("Limits: {:?}\n", adapter.limits());
 
         let (device, queue) = adapter
             .request_device(&DeviceDescriptor {
                 label: None,
-                // required_features: Features::none(), TODO: changed to below for compute shaders - figure out a feature gate for this
-                required_features: Features::all_webgpu_mask(),
-                experimental_features: ExperimentalFeatures::disabled(),
-                /* TODO: changed to below for compute shaders - figure out a feature gate for this
+                required_features: wgpu::Features::empty(),
+                experimental_features: wgpu::ExperimentalFeatures::disabled(),
+                // WebGL doesn't support all of wgpu's features, so if
+                // we're building for the web we'll have to disable some.
                 required_limits: if cfg!(target_arch = "wasm32") {
-                    Limits::downlevel_webgl2_defaults()
+                    wgpu::Limits::downlevel_webgl2_defaults()
                 } else {
-                    Limits::downlevel_defaults()
+                    wgpu::Limits::downlevel_defaults()
                 },
-                */
-                required_limits: Limits::downlevel_defaults(),
                 memory_hints: Default::default(),
-                trace: Trace::Off,
+                trace: wgpu::Trace::Off,
             })
             .await?;
 
@@ -202,7 +199,7 @@ impl<'a> State<'a> {
                     binding: 0,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         view_dimension: wgpu::TextureViewDimension::Cube,
                         multisampled: false,
                     },
@@ -211,7 +208,7 @@ impl<'a> State<'a> {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
             ], 
