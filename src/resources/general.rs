@@ -111,23 +111,16 @@ pub async fn load_model(
         .map(|mut m| {
             let mut vertices = (0..m.mesh.positions.len() / 3)
                 .map(|i| {
-                    if m.mesh.normals.is_empty() {
-                        model::ModelVertex {
-                            position: [
-                                m.mesh.positions[i * 3],
-                                m.mesh.positions[i * 3 + 1],
-                                m.mesh.positions[i * 3 + 2],
-                            ],
-                            tex_coords: [
-                                m.mesh.texcoords[i * 2],
-                                1.0 - m.mesh.texcoords[i * 2 + 1],
-                            ],
-                            normal: [0.0, 0.0, 0.0],
-                            tangent: [0.0; 3],
-                            bitangent: [0.0; 3]
-                        }
+                    let normal = if m.mesh.normals.is_empty() {
+                        [0.0, 0.0, 0.0]
                     } else {
-                        model::ModelVertex {
+                        [
+                            m.mesh.normals[i * 3],
+                            m.mesh.normals[i * 3 + 1],
+                            m.mesh.normals[i * 3 + 2],
+                        ]
+                    };
+                    model::ModelVertex {
                             position: [
                                 m.mesh.positions[i * 3],
                                 m.mesh.positions[i * 3 + 1],
@@ -137,15 +130,10 @@ pub async fn load_model(
                                 m.mesh.texcoords[i * 2],
                                 1.0 - m.mesh.texcoords[i * 2 + 1],
                             ],
-                            normal: [
-                                m.mesh.normals[i * 3],
-                                m.mesh.normals[i * 3 + 1],
-                                m.mesh.normals[i * 3 + 2],
-                            ],
+                            normal,
                             tangent: [0.0; 3],
                             bitangent: [0.0; 3]
                         }
-                    }
                 })
                 .collect::<Vec<_>>();
 

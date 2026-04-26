@@ -26,7 +26,7 @@ struct CurrentFrameData {
     view: TextureView
 }
 
-/// Handles rendering for the program.
+/// Handles rendering of the engine.
 pub struct Renderer<'a> {
     gpu: GpuContext,
     surface: wgpu::Surface<'a>,
@@ -305,9 +305,9 @@ impl<'a> Renderer<'a> {
         // index buffer
         render_pass.set_index_buffer(command.index_buffer, INDEX_BUFFER_FORMAT);
 
-        // draw
-        let indices = 0..(command.index_buffer.size().get() as u32);
-        let instances = 0..(instance_buffer_slice.size().get() as u32);
+        // draw (divide by 4 as the buffers contain `u32`, which are 4 bytes)
+        let indices = 0..(command.index_buffer.size().get() as u32 / 4);
+        let instances = 0..(instance_buffer_slice.size().get() as u32 / 4);
         render_pass.draw_indexed(indices, 0, instances);
 
         Ok(())

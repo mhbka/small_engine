@@ -1,7 +1,5 @@
 use slotmap::{SlotMap, new_key_type};
-
 use crate::graphics::{
-    gpu::texture::GpuTexture,
     render::renderable::{model::{Material, Mesh}, sprite::Sprite},
 };
 
