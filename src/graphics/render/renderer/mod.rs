@@ -7,7 +7,7 @@ pub mod resources;use crate::{core::world::World, graphics::{
         assets::{AssetStore, MeshId, SpriteId},
         commands::{MeshRenderCommand, SkyboxRenderCommand, SpriteRenderCommand}, hdr::HdrPipeline, renderer::resources::RendererResources,
     },
-    scene::{Scene, SceneError, instance_buffer::{InstanceBuffer, WrittenInstanceBuffer}}, textures::depth::DepthTexture,
+    scene::{Scene, SceneError, instance_buffer::{InstanceBuffer, InstanceData, WrittenInstanceBuffer}}, textures::depth::DepthTexture,
 }};
 use slotmap::{SlotMap, new_key_type};
 use thiserror::Error;
@@ -305,9 +305,9 @@ impl<'a> Renderer<'a> {
         // index buffer
         render_pass.set_index_buffer(command.index_buffer, INDEX_BUFFER_FORMAT);
 
-        // draw (divide by 4 as the buffers contain `u32`, which are 4 bytes)
-        let indices = 0..(command.index_buffer.size().get() as u32 / 4);
-        let instances = 0..(instance_buffer_slice.size().get() as u32 / 4);
+        // draw
+        let indices = 0..(command.index_buffer.size().get() as u32 / size_of::<u32>() as u32);
+        let instances = 0..(instance_buffer_slice.size().get() as u32 / size_of::<InstanceData>() as u32);
         render_pass.draw_indexed(indices, 0, instances);
 
         Ok(())
