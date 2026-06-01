@@ -87,10 +87,21 @@ impl<'a> State<'a> {
         println!("Features: {:?}\n", adapter.features());
         println!("Limits: {:?}\n", adapter.limits());
 
+        let features = wgpu::Features::all_webgpu_mask()
+            .difference(
+                Features { 
+                    features_wgpu: wgpu::FeaturesWGPU::empty(), 
+                    features_webgpu: 
+                        wgpu::FeaturesWebGPU::TEXTURE_COMPRESSION_ASTC 
+                        | wgpu::FeaturesWebGPU::TEXTURE_COMPRESSION_ASTC_SLICED_3D 
+                        | wgpu::FeaturesWebGPU::TEXTURE_COMPRESSION_ETC2
+                }
+            );
+
         let (device, queue) = adapter
             .request_device(&DeviceDescriptor {
                 label: None,
-                required_features: wgpu::Features::all_webgpu_mask(),
+                required_features: features,
                 experimental_features: wgpu::ExperimentalFeatures::disabled(),
                 required_limits: wgpu::Limits::downlevel_defaults(),
                 memory_hints: Default::default(),
