@@ -9,9 +9,10 @@ pub mod resources;use crate::{core::world::World, graphics::{
     },
     scene::{Scene, SceneError, instance_buffer::{InstanceBuffer, InstanceData, WrittenInstanceBuffer}}, textures::depth::DepthTexture,
 }};
+use log::debug;
 use slotmap::{SlotMap, new_key_type};
 use thiserror::Error;
-use wgpu::{BufferSlice, CommandEncoder, RenderPass, SurfaceTexture, TextureView};
+use wgpu::{BufferSlice, CommandEncoder, CurrentSurfaceTexture, RenderPass, SurfaceTexture, TextureView};
 
 new_key_type! {
     /// For referencing pipelines in the renderer.
@@ -88,12 +89,31 @@ impl<'a> Renderer<'a> {
 
     /// Begin a frame for rendering.
     pub fn begin_frame(&mut self) -> RenderResult<()> {
-        let output = self.surface.get_current_texture()?;
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        self.current_frame = Some(CurrentFrameData { output, view });
-        Ok(())
+        match self.surface.get_current_texture() {
+            CurrentSurfaceTexture::Success(output) => {
+                let view = output
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default());
+                self.current_frame = Some(CurrentFrameData { output, view });
+                Ok(())
+            },
+            CurrentSurfaceTexture::Suboptimal(_) | CurrentSurfaceTexture::Outdated => {
+                debug!("Surface suboptimal or outdated; configure and try again");
+                self.surface.configure(self.gpu.device(), &self.surface_config);
+                self.begin_frame()
+            }
+            CurrentSurfaceTexture::Timeout | CurrentSurfaceTexture::Occluded => {
+                debug!("Surface timed out or occluded; skipping frame");
+                Ok(())
+            },
+            CurrentSurfaceTexture::Lost => {
+                panic!("The surface was lost; crashing (WIP: can recover from this in the future");
+            }
+            CurrentSurfaceTexture::Validation => {
+                panic!("A validation error was brought up by the surface texture; crashing");
+            }
+        }
+        
     }
 
     /// End a frame for rendering by displaying it.
@@ -149,6 +169,7 @@ impl<'a> Renderer<'a> {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None
         });
 
         
@@ -255,6 +276,7 @@ impl<'a> Renderer<'a> {
             depth_stencil_attachment,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None
         });
         
         render(render_pass);
@@ -392,8 +414,8 @@ pub enum RenderError {
     SpriteHasNoInstanceData(SpriteId),
     #[error("{0}")]
     Scene(#[from] SceneError),
-    #[error("{0}")]
-    Surface(#[from] wgpu::SurfaceError),
+    #[error("An error came from the surface texture")]
+    Surface
 }
 
 /// A result from the renderer.

@@ -11,7 +11,7 @@ anyhow = "1.0"
 winit = { version = "0.30", features = ["android-native-activity"] }
 env_logger = "0.10"
 log = "0.4"
-wgpu = "27.0.0"
+wgpu = "29.0.1"
 pollster = "0.3"
 bytemuck = "1.24.0"
 cgmath = "0.18.0"
@@ -21,16 +21,16 @@ slotmap = "1.0.7"
 thiserror = "2.0.17"
 kira = "0.11.0"
 rustc-hash = "2.1.1"
-egui-wgpu = { version = "0.33.3", features = ["winit"] }
-egui = "0.33.3"
-egui-winit = { version = "0.33.3", default-features = false }
+egui-wgpu = { version = "0.34.3", features = ["winit"] }
+egui = "0.34.3"
+egui-winit = { version = "0.34.3", default-features = false }
 image = { version = "0.24", default-features = false, features = ["png", "jpeg", "hdr"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.6"
 console_log = "1.0"
 reqwest = { version = "0.11" }
-wgpu = { version = "27.0.0", features = ["webgl"]}
+wgpu = "29.0.1"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4.30"
 web-sys = { version = "0.3", features = [

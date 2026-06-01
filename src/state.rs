@@ -7,11 +7,11 @@ use winit::event::{ElementState, MouseScrollDelta, WindowEvent};
 use std::num::NonZero;
 use std::sync::Arc;
 use web_time::Instant;
-use wgpu::{Backends, PresentMode, TextureFormat};
+use wgpu::{BackendOptions, Backends, InstanceFlags, MemoryBudgetThresholds, PresentMode, TextureFormat};
 use wgpu::{
     BindGroupLayoutDescriptor, CompareFunction, DepthBiasState, DepthStencilState,
     DeviceDescriptor, ExperimentalFeatures, Features, Instance, InstanceDescriptor, Limits,
-    PowerPreference, RequestAdapterOptions, StencilState, SurfaceConfiguration, SurfaceError,
+    PowerPreference, RequestAdapterOptions, StencilState, SurfaceConfiguration,
     TextureUsages, Trace,
 };
 use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
@@ -63,12 +63,15 @@ impl<'a> State<'a> {
     pub async fn new(window: Arc<Window>) -> anyhow::Result<State<'a>> {
         let size = window.inner_size();
 
-        let instance = Instance::new(&InstanceDescriptor {
+        let instance = Instance::new(InstanceDescriptor {
             #[cfg(not(target_arch = "wasm32"))]
             backends: Backends::PRIMARY,
             #[cfg(target_arch = "wasm32")]
             backends: Backends::GL,
-            ..Default::default()
+            flags: InstanceFlags::default(),
+            memory_budget_thresholds: MemoryBudgetThresholds::default(),
+            backend_options: BackendOptions::default(),
+            display: None
         });
 
         let surface = instance.create_surface(window.clone()).unwrap();
@@ -87,15 +90,9 @@ impl<'a> State<'a> {
         let (device, queue) = adapter
             .request_device(&DeviceDescriptor {
                 label: None,
-                required_features: wgpu::Features::empty(),
+                required_features: wgpu::Features::all_webgpu_mask(),
                 experimental_features: wgpu::ExperimentalFeatures::disabled(),
-                // WebGL doesn't support all of wgpu's features, so if
-                // we're building for the web we'll have to disable some.
-                required_limits: if cfg!(target_arch = "wasm32") {
-                    wgpu::Limits::downlevel_webgl2_defaults()
-                } else {
-                    wgpu::Limits::downlevel_defaults()
-                },
+                required_limits: wgpu::Limits::downlevel_defaults(),
                 memory_hints: Default::default(),
                 trace: wgpu::Trace::Off,
             })
@@ -160,17 +157,17 @@ impl<'a> State<'a> {
             "basic_pipeline",
             &gpu,
             &[
-                &texture_bind_group_layout,
-                &camera_bind_group.layout(),
-                &point_light_bind_group.layout(),
+                Some(&texture_bind_group_layout),
+                Some(camera_bind_group.layout()),
+                Some(point_light_bind_group.layout()),
             ],
             &[ModelVertex::desc(), InstanceData::desc()],
             &shader,
             &shader,
             Some(DepthStencilState {
                 format: DepthTexture::DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: CompareFunction::Less,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(CompareFunction::Less),
                 stencil: StencilState::default(),
                 bias: DepthBiasState::default(),
             }),
@@ -226,15 +223,15 @@ impl<'a> State<'a> {
         let shader = device.create_shader_module(wgpu::include_wgsl!("sky.wgsl")); 
         let depth_stencil = wgpu::DepthStencilState {
             format: DepthTexture::DEPTH_FORMAT,
-            depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::LessEqual,
+            depth_write_enabled: Some(true),
+            depth_compare: Some(wgpu::CompareFunction::LessEqual),
             stencil: Default::default(),
             bias: Default::default(),
         };
         let sky_pipeline = GpuPipeline::create_default(
             "skybox_pipeline",
             &gpu,
-            &[camera_bind_group.layout(), sky_bind_group.layout()],
+            &[Some(camera_bind_group.layout()), Some(sky_bind_group.layout())],
             &[],
             &shader,
             &shader,
@@ -320,7 +317,7 @@ impl<'a> State<'a> {
         self.debug_menu.resize(width, height);
     }
 
-    pub fn render(&mut self) -> Result<(), SurfaceError> {
+    pub fn render(&mut self) {
         self.window.request_redraw();
 
         self.renderer
@@ -342,8 +339,6 @@ impl<'a> State<'a> {
         self.renderer
             .end_frame()
             .unwrap();
-
-        Ok(())
     }
 
     pub fn reset_for_frame(&mut self) {

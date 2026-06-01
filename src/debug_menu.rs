@@ -108,7 +108,7 @@ impl DebugMenu {
     /// 
     /// Make sure you call `setup_render` beforehand.
     pub fn render(&mut self, primitives: &Vec<ClippedPrimitive>, render_pass: RenderPass<'_>) {
-        let mut render_pass = render_pass.forget_lifetime();
+        let mut render_pass: RenderPass<'static> = render_pass.forget_lifetime();
         self.renderer.render(
             &mut render_pass, 
             &primitives,

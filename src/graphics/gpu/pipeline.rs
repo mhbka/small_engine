@@ -11,7 +11,7 @@ impl GpuPipeline {
     pub fn create_default(
         label: &str,
         gpu: &GpuContext,
-        bind_group_layouts: &[&wgpu::BindGroupLayout],
+        bind_group_layouts: &[Option<&wgpu::BindGroupLayout>],
         vertex_buffer_layouts: &[wgpu::VertexBufferLayout],
         vertex_shader: &wgpu::ShaderModule,
         fragment_shader: &wgpu::ShaderModule,
@@ -24,7 +24,7 @@ impl GpuPipeline {
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some(&format!("{label}_layout")),
             bind_group_layouts,
-            push_constant_ranges: &[],
+            immediate_size: 0
         });
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some(label),
@@ -60,7 +60,7 @@ impl GpuPipeline {
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 

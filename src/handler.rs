@@ -1,7 +1,6 @@
 use crate::app::App;
 use crate::state::State;
 use std::sync::Arc;
-use wgpu::SurfaceError;
 use winit::dpi::{PhysicalSize, Size};
 use winit::event::{DeviceEvent, KeyEvent, WindowEvent};
 use winit::keyboard::PhysicalKey;
@@ -114,16 +113,7 @@ impl ApplicationHandler<State<'static>> for App<'static> {
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
             WindowEvent::RedrawRequested => {
                 state.update();
-                match state.render() {
-                    Ok(_) => {}
-                    Err(SurfaceError::Lost | SurfaceError::Outdated) => {
-                        let size = state.window.inner_size();
-                        state.resize(size.width, size.height);
-                    }
-                    Err(err) => {
-                        log::error!("Unable to render: {err}");
-                    }
-                }
+                state.render();
                 state.reset_for_frame();
             }
             WindowEvent::KeyboardInput {

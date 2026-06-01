@@ -66,7 +66,7 @@ impl HdrPipeline {
         let pipeline = GpuPipeline::create_default(
             "Hdr::pipeline", 
             gpu, 
-            &[bind_group.layout()], 
+            &[Some(bind_group.layout())], 
             &[], // we generate vertex data directly in the shader, so no need to pass anything in
             &shader, 
             &shader, 
@@ -130,7 +130,8 @@ impl HdrPipeline {
             ], 
             depth_stencil_attachment: None, 
             timestamp_writes: None, 
-            occlusion_query_set: None 
+            occlusion_query_set: None,
+            multiview_mask: None
         });
         pass.set_pipeline(self.pipeline.handle());
         pass.set_bind_group(0, self.bind_group.handle(), &[]);
