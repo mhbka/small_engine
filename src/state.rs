@@ -156,7 +156,7 @@ impl<'a> State<'a> {
         let camera_bind_group = create_camera_bind_group(&gpu, camera.buffer());
 
         // shader
-        let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
+        let shader = device.create_shader_module(wgpu::include_wgsl!("shaders/shader.wgsl"));
 
         // lighting
         let cam_light = PointLight::new(cam_entity_id, Vector3::new(1.0, 1.0, 1.0));

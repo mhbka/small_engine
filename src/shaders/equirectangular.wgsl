@@ -76,13 +76,40 @@ fn compute_equirect_to_cubemap(
         let face = FACES[gid.z];
         let spherical = normalize(face.forward + face.right * cube_uv.x + face.up * cube_uv.y);
 
-        // Get coordinate on the equirectangular texture
-        let inv_atan = vec2(0.1591, 0.3183);
-        let eq_uv = vec2(atan2(spherical.z, spherical.x), asin(spherical.y)) * inv_atan + 0.5;
-        let eq_pixel = vec2<i32>(eq_uv * vec2<f32>(textureDimensions(src)));
+        /// We will use the latitude ("up-down") and longitude ("around") angles for equirectangular uv coordinates
+        /// 
+        /// - Lat:
+        /// -- Lat = "How far above/below equator?" -> angle between vector and XZ plane
+        /// -- Ranges from -90 to 90 (or -pi/2 to pi/2)
+        /// -- It's the (inner) angle of the triangle on the XY plane, where the hypotenuse length = 1 (vector itself)
+        /// -- With trig, we know that `sin(lat) = opposite/hypotenuse = y/1`
+        /// -- Thus, `lat = asin(y)`
+        let lat_angle = asin(spherical.y);
+
+        // Map from pi/2 - pi/2 to 0 - 1
+        let u = (lat_angle / PI) + 0.5;
+
+        /// - For long:
+        /// -- Long = "Which direction around the equator" -> projection/flattening of vector onto XZ plane
+        /// -- Long ranges from -180 to 180 (or -pi to pi)
+        /// -- It's the (inner) angle of the triangle on the XZ plane
+        /// -- We don't know the length of hypotenuse outright; it's the unit vector, *flattened* onto XZ plane
+        /// -- Instead, with trig, we see that `tan(long) = opposite/adjacent = z/x`
+        /// -- Thus, `long = atan(z/x)`
+        /// --- However, `atan` blows up at x=0
+        /// --- Also, if z and x have same signs, the quadrant becomes unknown
+        /// --- `atan2` patches these cases, and returns -pi to pi range instead of -pi/2 to pi/2
+        let long_angle = atan2(spherical.z, spherical.x);
+
+        // Map from -pi - pi to 0 - 1
+        let v = (long_angle / (2 * PI)) + 0.5;
+
+        // Finally - get the pixel coordinate, then the pixel there, and store it in the appropriate cube face!
+        let uv = vec2(u, v);
+        let pixel_uv = vec2<i32>(uv * vec2<f32>(textureDimensions(src)));
 
         // We use textureLoad() as textureSample() is not allowed in compute shaders
-        var sample = textureLoad(src, eq_pixel, 0);
+        var sample = textureLoad(src, pixel_uv, 0);
 
         textureStore(dst, gid.xy, gid.z, sample);
     }
