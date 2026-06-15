@@ -58,4 +58,42 @@ impl CubeMapTexture {
     pub fn inner(&self) -> &GpuTexture {
         &self.texture
     }
+
+    /// Get the bind group entries used for a `CubeMapTexture`.
+    pub fn bind_group_entries<'a>(
+        cube_texture: &'a Self
+    ) -> (
+        [wgpu::BindGroupLayoutEntry; 2],
+        [wgpu::BindGroupEntry<'a>; 2]
+    ) {
+        let layout_entries = [
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::Cube,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+        ];
+        let entries = [
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(cube_texture.inner().view()),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(cube_texture.inner().sampler()),
+            },
+        ];
+        return (layout_entries, entries);
+    }
 }

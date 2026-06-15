@@ -1,18 +1,18 @@
 use slotmap::{SlotMap, new_key_type};
-use crate::graphics::{
-    render::renderable::{model::{Material, Mesh}, sprite::Sprite},
-};
+use crate::graphics::render::renderable::{model::{Material, Mesh}, skybox::Skybox, sprite::Sprite};
 
 new_key_type! {
     pub struct MeshId;
     pub struct MaterialId;
     pub struct SpriteId;
+    pub struct SkyboxId;
 }
 
 pub struct AssetStore {
     meshes: SlotMap<MeshId, Mesh>,
     materials: SlotMap<MaterialId, Material>,
     sprites: SlotMap<SpriteId, Sprite>,
+    skyboxes: SlotMap<SkyboxId, Skybox>
 }
 
 impl AssetStore {
@@ -22,6 +22,7 @@ impl AssetStore {
             meshes: SlotMap::with_key(),
             materials: SlotMap::with_key(),
             sprites: SlotMap::with_key(),
+            skyboxes: SlotMap::with_key()
         }
     }
 
@@ -46,6 +47,14 @@ impl AssetStore {
             .collect()
     }
 
+    /// Add skyboxes to the store.
+    pub fn add_skyboxes(&mut self, skyboxes: Vec<Skybox>) -> Vec<SkyboxId> {
+        skyboxes
+            .into_iter()
+            .map(|s| self.skyboxes.insert(s))
+            .collect()
+    }
+
     /// Get a material.
     pub fn material(&self, id: MaterialId) -> Option<&Material> {
         self.materials.get(id)
@@ -56,8 +65,13 @@ impl AssetStore {
         self.meshes.get(id)
     }
 
-    /// Get a sprite texture.
+    /// Get a sprite.
     pub fn sprite(&self, id: SpriteId) -> Option<&Sprite> {
         self.sprites.get(id)
+    }
+
+    /// Get a skybox.
+    pub fn skybox(&self, id: SkyboxId) -> Option<&Skybox> {
+        self.skyboxes.get(id)
     }
 }

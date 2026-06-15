@@ -7,7 +7,7 @@ use thiserror::Error;
 use crate::{core::world::{World, WorldEntityId}, graphics::{
     gpu::GpuContext,
     render::{
-        assets::{AssetStore, MaterialId, MeshId, SpriteId}, commands::{MeshRenderCommand, RenderCommandBuffer, SpriteRenderCommand}, renderable::{model::MeshInstance, skybox::SkyBox, sprite::SpriteInstance}, renderer::{BindGroupId, PipelineId}
+        assets::{AssetStore, MaterialId, MeshId, SkyboxId, SpriteId}, commands::{MeshRenderCommand, RenderCommandBuffer, SkyboxRenderCommand, SpriteRenderCommand}, pipelines::{model::ModelPipeline, skybox::SkyboxPipeline}, renderable::{model::MeshInstance, sprite::SpriteInstance}, renderer::{BindGroupId, PipelineId}
     },
     scene::{
         instance_buffer::InstanceBuffer, light::point::{PointLight, PointLightCollection}, raw_spatial_transform::RawSpatialTransform
@@ -30,12 +30,11 @@ pub struct Scene {
     instances_by_sprite: SecondaryMap<SpriteId, Vec<SpriteInstanceId>>, // optimization, same as ^
     camera: Camera, 
     point_lights: PointLightCollection,
-    pipeline: PipelineId,
+    pipeline: ModelPipeline,
     camera_bind_group: BindGroupId,
     lighting_bind_group: BindGroupId,
-    skybox: SkyBox,
-    sky_pipeline: PipelineId,
-    sky_bind_group: BindGroupId,
+    skybox: SkyboxId,
+    sky_pipeline: SkyboxPipeline,
 }
 
 impl Scene {
@@ -43,12 +42,11 @@ impl Scene {
     pub fn new(
         camera: Camera,
         point_lights: PointLightCollection,
-        pipeline: PipelineId,
+        pipeline: ModelPipeline,
         camera_bind_group: BindGroupId,
         lighting_bind_group: BindGroupId,
-        skybox: SkyBox,
-        sky_pipeline: PipelineId,
-        sky_bind_group: BindGroupId,
+        skybox: SkyboxId,
+        sky_pipeline: SkyboxPipeline,
     ) -> Self {
         Self {
             mesh_instances: SlotMap::with_key(),
@@ -60,7 +58,6 @@ impl Scene {
             pipeline,
             skybox,
             sky_pipeline,
-            sky_bind_group,
             camera_bind_group,
             lighting_bind_group,
         }
@@ -75,11 +72,7 @@ impl Scene {
     ) -> Result<RenderCommandBuffer<'a>, SceneError> {
         let mesh_commands = self.mesh_commands(world, assets, instance_buffer)?;
         let sprite_commands = self.sprite_commands(world, assets, instance_buffer)?;
-        let sky_command = self.skybox.to_render_command(
-            self.sky_pipeline,
-            self.sky_bind_group,
-            self.camera_bind_group
-        );
+        let sky_command = self.skybox_command(assets)?;
         let commands = RenderCommandBuffer {
             mesh: mesh_commands,
             sprite: sprite_commands,
@@ -88,7 +81,7 @@ impl Scene {
         Ok(commands)
     }
 
-    /// Updates and writes updateable buffers.
+    /// Updates and writes any updateable buffers.
     ///
     /// Currently, this is for the camera and light uniforms.
     pub fn update_and_write_buffers(&mut self, world: &World, gpu: &GpuContext) {
@@ -149,7 +142,7 @@ impl Scene {
             let command = mesh.to_render_command(
                 mesh_id,
                 material,
-                self.pipeline,
+                self.pipeline.inner(),
                 self.camera_bind_group,
                 self.lighting_bind_group,
             );
@@ -188,12 +181,27 @@ impl Scene {
             sprite_instance_buffer.extend(instance_transforms);
             let command = sprite.to_render_command(
                 sprite_id,
-                self.pipeline,
+                self.pipeline.inner(),
                 self.camera_bind_group
             );
             sprite_commands.push(command);
         }
         Ok(sprite_commands)
+    }
+
+    /// Get the skybox command for a scene.
+    fn skybox_command<'a>(
+        &'a self,
+        assets: &'a AssetStore,
+    ) -> Result<SkyboxRenderCommand<'a>, SceneError> {
+        let skybox = assets
+            .skybox(self.skybox)
+            .ok_or(SceneError::SkyboxNotFound(self.skybox))?;
+        let command = skybox.to_render_command(
+            self.sky_pipeline.inner(), 
+            self.camera_bind_group
+        );
+        Ok(command)
     }
 }
 
@@ -205,6 +213,8 @@ pub enum SceneError {
     MeshNotFound(MeshId),
     #[error("Couldn't find sprite of ID {0:?}")]
     SpriteNotFound(SpriteId),
+    #[error("Couldn't find skybox of ID {0:?}")]
+    SkyboxNotFound(SkyboxId),
     #[error("Couldn't find material of ID {0:?}")]
     MaterialNotFound(MaterialId),
     #[error("Couldn't find mesh instance for ID {0:?}")]

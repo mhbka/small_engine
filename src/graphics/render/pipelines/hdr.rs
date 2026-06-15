@@ -62,7 +62,7 @@ impl HdrPipeline {
             ]
         );
 
-        let shader = gpu.device().create_shader_module(wgpu::include_wgsl!("../../shaders/hdr.wgsl"));
+        let shader = gpu.device().create_shader_module(wgpu::include_wgsl!("../../../shaders/hdr.wgsl"));
         let pipeline = GpuPipeline::create_default(
             "Hdr::pipeline", 
             gpu, 

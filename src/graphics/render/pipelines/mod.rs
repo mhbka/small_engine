@@ -1,4 +1,4 @@
-pub mod hdr;
 pub mod model;
 pub mod skybox;
-mod utils;
+pub mod hdr;
+pub mod sprite;

@@ -15,7 +15,7 @@ impl HdrLoader {
         let device = gpu.device();
 
         let shader = device.create_shader_module(wgpu::include_wgsl!("../shaders/equirectangular.wgsl"));
-        let format = wgpu::TextureFormat::Rgba16Float;
+        let format = wgpu::TextureFormat::Rgba32Float;
         let equirect_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("HdrLoader::equirect_layout"),
             entries: &[

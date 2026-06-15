@@ -1,11 +1,12 @@
-pub mod resources;use crate::{core::world::World, graphics::{
+pub mod resources;use std::cmp::{max, min};
+
+use crate::{core::world::World, graphics::{
     constants::{
         INDEX_BUFFER_FORMAT, INSTANCE_BUFFER_SLOT, MESH_CAMERA_BIND_GROUP_SLOT, MESH_LIGHTING_BIND_GROUP_SLOT, MESH_MATERIAL_BIND_GROUP_SLOT, SKYBOX_CAMERA_BIND_GROUP_SLOT, SKYBOX_CUBEMAP_BIND_GROUP_SLOT, SPRITE_CAMERA_BIND_GROUP_SLOT, SPRITE_SPRITE_BIND_GROUP_SLOT, VERTEX_BUFFER_SLOT
     },
     gpu::{GpuContext, bind_group::GpuBindGroup, pipeline::GpuPipeline, texture::GpuTexture},
     render::{
-        assets::{AssetStore, MeshId, SpriteId},
-        commands::{MeshRenderCommand, SkyboxRenderCommand, SpriteRenderCommand}, hdr::HdrPipeline, renderer::resources::RendererResources,
+        assets::{AssetStore, MeshId, SpriteId}, commands::{MeshRenderCommand, SkyboxRenderCommand, SpriteRenderCommand}, pipelines::hdr::HdrPipeline, renderer::resources::RendererResources
     },
     scene::{Scene, SceneError, instance_buffer::{InstanceBuffer, InstanceData, WrittenInstanceBuffer}}, textures::depth::DepthTexture,
 }};
@@ -77,8 +78,10 @@ impl<'a> Renderer<'a> {
     /// Handle resizing of the surface.
     pub fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
-            self.surface_config.width = width;
-            self.surface_config.height = height;
+            // NOTE: WebGL has max 2048px, so we cap this here
+            // If we don't wanna support WebGL in the future, this can be removed
+            self.surface_config.width = min(2048, width);
+            self.surface_config.height = min(2048, height);
             self.surface
                 .configure(&self.gpu.device(), &self.surface_config);
             self.surface_is_configured = true;
@@ -225,7 +228,7 @@ impl<'a> Renderer<'a> {
         self.hdr.process(&mut encoder, &frame.view);
         self.gpu
             .queue()
-            .submit(std::iter::once(encoder.finish()));
+            .submit([encoder.finish()]);
         Ok(())
     }
 
